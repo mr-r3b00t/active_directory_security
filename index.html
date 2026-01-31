@@ -688,7 +688,7 @@
                 <div class="stat-label">Attack Guides</div>
             </div>
             <div class="stat">
-                <div class="stat-value">50+</div>
+                <div class="stat-value">20+</div>
                 <div class="stat-label">PowerShell Scripts</div>
             </div>
             <div class="stat">
@@ -786,32 +786,26 @@
 
         <!-- Attack Chain Visualization -->
         <section class="attack-chain-section">
-            <h3>Common Attack Chain</h3>
-            <p>How these attacks combine to achieve full domain compromise</p>
+            <h3>Common Attack Chains</h3>
+            <p>How attackers typically gain initial access and escalate to domain compromise</p>
             
             <div class="attack-chain">
-                <div class="attack-node">
-                    <div class="attack-node-icon">🎣</div>
+                <div class="attack-node" style="min-width: 180px;">
+                    <div class="attack-node-icon">🔓</div>
                     <div class="attack-node-title">Initial Access</div>
-                    <div class="attack-node-sub">Phishing / Exploit</div>
+                    <div class="attack-node-sub">VPN / RDS / Citrix / Horizon</div>
                 </div>
                 <div class="attack-arrow">→</div>
                 <div class="attack-node">
-                    <div class="attack-node-icon">🔄</div>
-                    <div class="attack-node-title">NTLM Relay</div>
-                    <div class="attack-node-sub">Coercion + Relay</div>
+                    <div class="attack-node-icon">🖥️</div>
+                    <div class="attack-node-title">AD Access</div>
+                    <div class="attack-node-sub">Domain User Context</div>
                 </div>
                 <div class="attack-arrow">→</div>
                 <div class="attack-node">
                     <div class="attack-node-icon">🎫</div>
                     <div class="attack-node-title">Kerberoast</div>
-                    <div class="attack-node-sub">Crack Service Accts</div>
-                </div>
-                <div class="attack-arrow">→</div>
-                <div class="attack-node">
-                    <div class="attack-node-icon">⬆️</div>
-                    <div class="attack-node-title">Privilege Escalation</div>
-                    <div class="attack-node-sub">Admin Access</div>
+                    <div class="attack-node-sub">Crack Service Accounts</div>
                 </div>
                 <div class="attack-arrow">→</div>
                 <div class="attack-node compromise">
@@ -820,6 +814,10 @@
                     <div class="attack-node-sub">Domain Compromise</div>
                 </div>
             </div>
+
+            <p style="margin-top: 2rem; font-size: 0.85rem; color: var(--text-muted);">
+                Stolen VPN credentials or compromised remote access (RDS, Citrix, VMware Horizon) provide attackers with authenticated domain access. From there, Kerberoasting requires zero privileges—any domain user can request service tickets and crack them offline.
+            </p>
         </section>
 
         <!-- Features Section -->
