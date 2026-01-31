@@ -1,0 +1,1627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kerberoasting Hardening Guide</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #0f0f18;
+            --bg-tertiary: #16162a;
+            --bg-card: #1a1a2e;
+            --border-color: #2a2a4a;
+            --text-primary: #e6e6f0;
+            --text-secondary: #9898b0;
+            --text-muted: #6868888;
+            --accent-gold: #fbbf24;
+            --accent-amber: #f59e0b;
+            --accent-orange: #f97316;
+            --accent-red: #ef4444;
+            --accent-purple: #a855f7;
+            --accent-blue: #3b82f6;
+            --accent-cyan: #06b6d4;
+            --accent-green: #22c55e;
+            --code-bg: #0d0d15;
+            --gradient-gold: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+            --gradient-purple: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%);
+            --gradient-red: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            --gradient-blue: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Source Sans 3', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.7;
+            font-size: 16px;
+        }
+
+        /* Animated background */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(ellipse at 20% 20%, rgba(251, 191, 36, 0.05) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 80%, rgba(168, 85, 247, 0.05) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        /* Header */
+        header {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+            background: rgba(15, 15, 24, 0.9);
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 1.2rem;
+            color: var(--accent-gold);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .logo::before {
+            content: '🎫';
+            font-size: 1.1rem;
+        }
+
+        nav ul {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+        }
+
+        nav a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        nav a:hover {
+            color: var(--accent-gold);
+        }
+
+        /* Hero */
+        .hero {
+            padding: 6rem 2rem;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 800px;
+            height: 800px;
+            background: 
+                radial-gradient(circle at 30% 30%, rgba(251, 191, 36, 0.1) 0%, transparent 40%),
+                radial-gradient(circle at 70% 70%, rgba(168, 85, 247, 0.08) 0%, transparent 40%);
+            pointer-events: none;
+        }
+
+        .hero h1 {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: clamp(2rem, 5vw, 3.5rem);
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            background: var(--gradient-gold);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero p {
+            color: var(--text-secondary);
+            font-size: 1.2rem;
+            max-width: 750px;
+            margin: 0 auto 2rem;
+        }
+
+        .hero-badges {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 9999px;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .badge-icon {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .badge-icon.critical { background: var(--accent-red); }
+        .badge-icon.warning { background: var(--accent-amber); }
+        .badge-icon.info { background: var(--accent-gold); }
+
+        /* Main content */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* Attack overview card */
+        .attack-overview {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 2.5rem;
+            margin-bottom: 3rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .attack-overview::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: var(--gradient-red);
+        }
+
+        .attack-flow {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+
+        .attack-step {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+            position: relative;
+        }
+
+        .attack-step::after {
+            content: '→';
+            position: absolute;
+            right: -1.5rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--accent-amber);
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        .attack-step:last-child::after {
+            display: none;
+        }
+
+        .attack-step-number {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            background: var(--gradient-gold);
+            border-radius: 50%;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 0.8rem;
+            color: var(--bg-primary);
+            margin-bottom: 0.75rem;
+        }
+
+        .attack-step-title {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .attack-step-desc {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 0.5rem;
+        }
+
+        /* Section cards */
+        .section {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 2.5rem;
+            margin-bottom: 2rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: var(--gradient-gold);
+        }
+
+        .section.purple::before {
+            background: var(--gradient-purple);
+        }
+
+        .section.blue::before {
+            background: var(--gradient-blue);
+        }
+
+        .section.red::before {
+            background: var(--gradient-red);
+        }
+
+        .section.green::before {
+            background: linear-gradient(135deg, var(--accent-green) 0%, #16a34a 100%);
+        }
+
+        .section-number {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--accent-gold);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 0.5rem;
+        }
+
+        h2 {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.75rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            color: var(--text-primary);
+        }
+
+        h3 {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin: 2rem 0 1rem;
+            color: var(--accent-amber);
+        }
+
+        h4 {
+            font-size: 1rem;
+            font-weight: 600;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+
+        p {
+            margin-bottom: 1rem;
+            color: var(--text-secondary);
+        }
+
+        /* Code blocks */
+        pre {
+            background: var(--code-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.25rem;
+            overflow-x: auto;
+            margin: 1rem 0;
+            position: relative;
+        }
+
+        pre::before {
+            content: attr(data-lang);
+            position: absolute;
+            top: 0.5rem;
+            right: 0.75rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            color: var(--accent-gold);
+        }
+
+        pre code {
+            color: var(--text-primary);
+        }
+
+        /* Inline code */
+        p code, li code, td code {
+            background: var(--bg-tertiary);
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.85em;
+        }
+
+        /* Tables */
+        .table-wrapper {
+            overflow-x: auto;
+            margin: 1.5rem 0;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        th {
+            background: var(--bg-tertiary);
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 600;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-secondary);
+            text-align: left;
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        td {
+            padding: 0.875rem 1rem;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-secondary);
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background: rgba(251, 191, 36, 0.03);
+        }
+
+        /* Alert boxes */
+        .alert {
+            padding: 1.25rem 1.5rem;
+            border-radius: 8px;
+            margin: 1.5rem 0;
+            display: flex;
+            gap: 1rem;
+            align-items: flex-start;
+        }
+
+        .alert-icon {
+            font-size: 1.25rem;
+            flex-shrink: 0;
+            margin-top: 0.1rem;
+        }
+
+        .alert-warning {
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+
+        .alert-warning .alert-icon { color: var(--accent-amber); }
+
+        .alert-danger {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .alert-danger .alert-icon { color: var(--accent-red); }
+
+        .alert-info {
+            background: rgba(251, 191, 36, 0.1);
+            border: 1px solid rgba(251, 191, 36, 0.3);
+        }
+
+        .alert-info .alert-icon { color: var(--accent-gold); }
+
+        .alert-success {
+            background: rgba(34, 197, 94, 0.1);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+
+        .alert-success .alert-icon { color: var(--accent-green); }
+
+        .alert-content strong {
+            display: block;
+            color: var(--text-primary);
+            margin-bottom: 0.25rem;
+        }
+
+        .alert-content p {
+            margin: 0;
+            font-size: 0.9rem;
+        }
+
+        /* Lists */
+        ul, ol {
+            margin: 1rem 0 1rem 1.5rem;
+            color: var(--text-secondary);
+        }
+
+        li {
+            margin-bottom: 0.5rem;
+        }
+
+        li::marker {
+            color: var(--accent-gold);
+        }
+
+        /* Stats grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+
+        .stat-card {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 2rem;
+            font-weight: 700;
+            background: var(--gradient-gold);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: 0.25rem;
+        }
+
+        /* Password strength meter */
+        .password-examples {
+            display: grid;
+            gap: 0.75rem;
+            margin: 1.5rem 0;
+        }
+
+        .password-row {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem 1.25rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+        }
+
+        .password-strength {
+            width: 80px;
+            height: 6px;
+            background: var(--bg-primary);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .password-strength-bar {
+            height: 100%;
+            border-radius: 3px;
+        }
+
+        .password-strength-bar.weak { width: 25%; background: var(--accent-red); }
+        .password-strength-bar.medium { width: 50%; background: var(--accent-amber); }
+        .password-strength-bar.strong { width: 75%; background: var(--accent-gold); }
+        .password-strength-bar.excellent { width: 100%; background: var(--accent-green); }
+
+        .password-text {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            flex: 1;
+        }
+
+        .password-time {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            min-width: 100px;
+            text-align: right;
+        }
+
+        /* Checklist section */
+        .checklist {
+            display: grid;
+            gap: 0.75rem;
+        }
+
+        .checklist-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem 1.25rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .checklist-item:hover {
+            border-color: var(--accent-gold);
+            transform: translateX(4px);
+        }
+
+        .checklist-item input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            accent-color: var(--accent-gold);
+            cursor: pointer;
+        }
+
+        .checklist-item label {
+            cursor: pointer;
+            flex: 1;
+            color: var(--text-secondary);
+        }
+
+        .checklist-item input:checked + label {
+            text-decoration: line-through;
+            color: var(--text-muted);
+        }
+
+        /* Comparison cards */
+        .comparison {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+
+        .comparison-card {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+
+        .comparison-card.bad {
+            border-color: rgba(239, 68, 68, 0.3);
+        }
+
+        .comparison-card.good {
+            border-color: rgba(34, 197, 94, 0.3);
+        }
+
+        .comparison-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+            font-weight: 600;
+        }
+
+        .comparison-header.bad { color: var(--accent-red); }
+        .comparison-header.good { color: var(--accent-green); }
+
+        .comparison-card ul {
+            margin: 0;
+            padding-left: 1.25rem;
+        }
+
+        /* Table of contents */
+        .toc {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .toc h3 {
+            margin-top: 0;
+            color: var(--text-primary);
+        }
+
+        .toc ol {
+            margin: 0;
+            padding-left: 1.25rem;
+        }
+
+        .toc li {
+            margin-bottom: 0.75rem;
+        }
+
+        .toc a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .toc a:hover {
+            color: var(--accent-gold);
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 3rem 2rem;
+            border-top: 1px solid var(--border-color);
+            margin-top: 4rem;
+        }
+
+        footer p {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        footer a {
+            color: var(--accent-gold);
+            text-decoration: none;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header-content {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            nav ul {
+                gap: 1rem;
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+
+            .hero {
+                padding: 4rem 1.5rem;
+            }
+
+            .section {
+                padding: 1.5rem;
+            }
+
+            .attack-step::after {
+                display: none;
+            }
+
+            pre {
+                font-size: 0.8rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <div class="logo">KERBEROAST_DEFENSE</div>
+            <nav>
+                <ul>
+                    <li><a href="#overview">Overview</a></li>
+                    <li><a href="#passwords">Passwords</a></li>
+                    <li><a href="#gmsa">gMSA</a></li>
+                    <li><a href="#encryption">Encryption</a></li>
+                    <li><a href="#detection">Detection</a></li>
+                    <li><a href="#checklist">Checklist</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <section class="hero">
+        <h1>Kerberoasting Hardening Guide</h1>
+        <p>Protect your Active Directory service accounts from offline credential theft attacks by implementing strong passwords, modern authentication, and robust monitoring.</p>
+        <div class="hero-badges">
+            <span class="badge"><span class="badge-icon critical"></span>High Impact Attack</span>
+            <span class="badge"><span class="badge-icon warning"></span>Any Domain User</span>
+            <span class="badge"><span class="badge-icon info"></span>Offline Cracking</span>
+        </div>
+    </section>
+
+    <main class="container">
+        <!-- Attack Overview -->
+        <section id="overview" class="attack-overview">
+            <div class="section-number">Understanding The Threat</div>
+            <h2>How Kerberoasting Works</h2>
+            
+            <p>Kerberoasting exploits a fundamental feature of Kerberos: any authenticated domain user can request a service ticket (TGS) for any service with a Service Principal Name (SPN). The ticket is encrypted with the service account's password hash, allowing offline cracking.</p>
+
+            <div class="attack-flow">
+                <div class="attack-step">
+                    <div class="attack-step-number">1</div>
+                    <div class="attack-step-title">Enumerate SPNs</div>
+                    <div class="attack-step-desc">Find service accounts</div>
+                </div>
+                <div class="attack-step">
+                    <div class="attack-step-number">2</div>
+                    <div class="attack-step-title">Request TGS</div>
+                    <div class="attack-step-desc">Get encrypted ticket</div>
+                </div>
+                <div class="attack-step">
+                    <div class="attack-step-number">3</div>
+                    <div class="attack-step-title">Extract Hash</div>
+                    <div class="attack-step-desc">Export to crackable format</div>
+                </div>
+                <div class="attack-step">
+                    <div class="attack-step-number">4</div>
+                    <div class="attack-step-title">Crack Offline</div>
+                    <div class="attack-step-desc">GPU-accelerated attacks</div>
+                </div>
+                <div class="attack-step">
+                    <div class="attack-step-number">5</div>
+                    <div class="attack-step-title">Access Granted</div>
+                    <div class="attack-step-desc">Compromise service</div>
+                </div>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value">100%</div>
+                    <div class="stat-label">Legitimate Kerberos Feature</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">0</div>
+                    <div class="stat-label">Default Detection</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">∞</div>
+                    <div class="stat-label">Offline Crack Attempts</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">Seconds</div>
+                    <div class="stat-label">Weak Password Crack Time</div>
+                </div>
+            </div>
+
+            <div class="alert alert-danger">
+                <span class="alert-icon">⚠️</span>
+                <div class="alert-content">
+                    <strong>Why This Is Dangerous</strong>
+                    <p>Any authenticated user can perform this attack. No special privileges required. No network traffic to intercept. Unlimited offline cracking attempts. Weak passwords fall in seconds with modern GPUs.</p>
+                </div>
+            </div>
+        </section>
+
+        <div class="toc">
+            <h3>Hardening Measures</h3>
+            <ol>
+                <li><a href="#passwords">Enforce Strong Service Account Passwords</a></li>
+                <li><a href="#gmsa">Implement Group Managed Service Accounts (gMSA)</a></li>
+                <li><a href="#encryption">Enforce AES Encryption</a></li>
+                <li><a href="#spn">Audit and Reduce SPN Exposure</a></li>
+                <li><a href="#detection">Detection and Monitoring</a></li>
+                <li><a href="#checklist">Implementation Checklist</a></li>
+            </ol>
+        </div>
+
+        <!-- Section 1: Passwords -->
+        <section id="passwords" class="section">
+            <div class="section-number">Section 01</div>
+            <h2>Enforce Strong Service Account Passwords</h2>
+            
+            <p>The single most effective defense against Kerberoasting is using long, complex passwords for service accounts. Password length dramatically increases crack time.</p>
+
+            <h3>Password Length vs. Crack Time</h3>
+            <p>With modern GPU cracking (Hashcat on RTX 4090, ~1.5 million hashes/second for Kerberos 5 TGS-REP RC4):</p>
+
+            <div class="password-examples">
+                <div class="password-row">
+                    <div class="password-strength"><div class="password-strength-bar weak"></div></div>
+                    <span class="password-text">Summer2024!</span>
+                    <span class="password-time">~Minutes</span>
+                </div>
+                <div class="password-row">
+                    <div class="password-strength"><div class="password-strength-bar medium"></div></div>
+                    <span class="password-text">Tr0ub4dor&3</span>
+                    <span class="password-time">~Hours</span>
+                </div>
+                <div class="password-row">
+                    <div class="password-strength"><div class="password-strength-bar strong"></div></div>
+                    <span class="password-text">correct-horse-battery</span>
+                    <span class="password-time">~Months</span>
+                </div>
+                <div class="password-row">
+                    <div class="password-strength"><div class="password-strength-bar excellent"></div></div>
+                    <span class="password-text">j8#kL9$mN2@pQ5&rT7*</span>
+                    <span class="password-time">~Centuries</span>
+                </div>
+            </div>
+
+            <h3>1.1 Minimum Requirements</h3>
+            
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Account Type</th>
+                            <th>Minimum Length</th>
+                            <th>Recommendation</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Standard Service Accounts</td>
+                            <td>25 characters</td>
+                            <td>30+ characters, randomly generated</td>
+                        </tr>
+                        <tr>
+                            <td>Privileged Service Accounts</td>
+                            <td>30 characters</td>
+                            <td>Use gMSA instead</td>
+                        </tr>
+                        <tr>
+                            <td>Domain Admin SPNs</td>
+                            <td>N/A</td>
+                            <td>Remove SPN or use gMSA</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3>1.2 Create Fine-Grained Password Policy</h3>
+            <p>Apply stricter password requirements specifically to service accounts:</p>
+            
+            <pre data-lang="PowerShell"><code># Create a new Fine-Grained Password Policy for service accounts
+New-ADFineGrainedPasswordPolicy -Name "ServiceAccountPolicy" `
+    -Precedence 10 `
+    -MinPasswordLength 25 `
+    -PasswordHistoryCount 24 `
+    -MaxPasswordAge "180.00:00:00" `
+    -MinPasswordAge "1.00:00:00" `
+    -ComplexityEnabled $true `
+    -ReversibleEncryptionEnabled $false `
+    -LockoutDuration "00:30:00" `
+    -LockoutObservationWindow "00:30:00" `
+    -LockoutThreshold 5</code></pre>
+
+            <h3>1.3 Apply Policy to Service Accounts</h3>
+            <pre data-lang="PowerShell"><code># Create a group for service accounts
+New-ADGroup -Name "SVC_PasswordPolicy_Group" -GroupScope Global -GroupCategory Security
+
+# Add service accounts to the group
+Add-ADGroupMember -Identity "SVC_PasswordPolicy_Group" -Members "svc_sql", "svc_iis", "svc_backup"
+
+# Apply the fine-grained password policy
+Add-ADFineGrainedPasswordPolicySubject -Identity "ServiceAccountPolicy" -Subjects "SVC_PasswordPolicy_Group"</code></pre>
+
+            <h3>1.4 Generate Strong Random Passwords</h3>
+            <pre data-lang="PowerShell"><code># Generate a 30-character random password
+Add-Type -AssemblyName System.Web
+$password = [System.Web.Security.Membership]::GeneratePassword(30, 10)
+Write-Output $password
+
+# Or use a custom generator
+function New-ServiceAccountPassword {
+    param([int]$Length = 30)
+    $chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*'
+    -join ((1..$Length) | ForEach-Object { $chars[(Get-Random -Maximum $chars.Length)] })
+}
+
+New-ServiceAccountPassword -Length 30</code></pre>
+
+            <h3>1.5 Audit Current Service Account Passwords</h3>
+            <p>Check when service account passwords were last set:</p>
+            <pre data-lang="PowerShell"><code># Find service accounts with old passwords
+Get-ADUser -Filter {ServicePrincipalName -like "*"} -Properties PasswordLastSet, ServicePrincipalName |
+    Select-Object Name, PasswordLastSet, @{N='DaysSinceChange';E={(New-TimeSpan -Start $_.PasswordLastSet).Days}}, 
+                  @{N='SPNs';E={$_.ServicePrincipalName -join "; "}} |
+    Sort-Object DaysSinceChange -Descending |
+    Format-Table -AutoSize</code></pre>
+
+            <div class="alert alert-warning">
+                <span class="alert-icon">⚠️</span>
+                <div class="alert-content">
+                    <strong>Password Storage</strong>
+                    <p>Store service account passwords in a privileged access management (PAM) solution or enterprise password vault. Never store in plaintext files, scripts, or documentation.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 2: gMSA -->
+        <section id="gmsa" class="section purple">
+            <div class="section-number">Section 02</div>
+            <h2>Implement Group Managed Service Accounts (gMSA)</h2>
+            
+            <p>gMSAs are the <strong>gold standard</strong> for service account security. They provide automatic password management with 240-character cryptographically random passwords that rotate every 30 days.</p>
+
+            <div class="comparison">
+                <div class="comparison-card bad">
+                    <div class="comparison-header bad">❌ Traditional Service Account</div>
+                    <ul>
+                        <li>Manual password management</li>
+                        <li>Password often weak or stale</li>
+                        <li>Password stored in scripts/configs</li>
+                        <li>Kerberoastable</li>
+                        <li>Credentials can be extracted</li>
+                    </ul>
+                </div>
+                <div class="comparison-card good">
+                    <div class="comparison-header good">✓ Group Managed Service Account</div>
+                    <ul>
+                        <li>Automatic 240-char passwords</li>
+                        <li>30-day automatic rotation</li>
+                        <li>No password to manage or leak</li>
+                        <li>Effectively uncrackable</li>
+                        <li>Built-in Windows support</li>
+                    </ul>
+                </div>
+            </div>
+
+            <h3>2.1 Prerequisites</h3>
+            <ul>
+                <li>Windows Server 2012+ Domain Controllers</li>
+                <li>Domain Functional Level 2012 or higher</li>
+                <li>KDS Root Key created</li>
+                <li>Target servers must be Windows Server 2012+</li>
+            </ul>
+
+            <h3>2.2 Create KDS Root Key</h3>
+            <p>This only needs to be done once per domain:</p>
+            <pre data-lang="PowerShell"><code># For production (waits 10 hours for replication)
+Add-KdsRootKey -EffectiveImmediately
+
+# For lab/testing ONLY (immediate use - NOT for production)
+Add-KdsRootKey -EffectiveTime ((Get-Date).AddHours(-10))</code></pre>
+
+            <div class="alert alert-danger">
+                <span class="alert-icon">🛑</span>
+                <div class="alert-content">
+                    <strong>Production Warning</strong>
+                    <p>In production, wait 10+ hours after creating the KDS root key before creating gMSAs. This allows replication to all DCs.</p>
+                </div>
+            </div>
+
+            <h3>2.3 Create a gMSA</h3>
+            <pre data-lang="PowerShell"><code># Create the gMSA
+New-ADServiceAccount -Name "gMSA_SQLService" `
+    -DNSHostName "gMSA_SQLService.domain.local" `
+    -PrincipalsAllowedToRetrieveManagedPassword "SQL_Servers" `
+    -KerberosEncryptionType AES128,AES256 `
+    -Description "gMSA for SQL Server service"
+
+# Add SPNs if needed
+Set-ADServiceAccount -Identity "gMSA_SQLService" `
+    -ServicePrincipalNames @{Add="MSSQLSvc/sqlserver.domain.local:1433","MSSQLSvc/sqlserver.domain.local"}</code></pre>
+
+            <h3>2.4 Install gMSA on Target Server</h3>
+            <pre data-lang="PowerShell"><code># Install the AD PowerShell module if needed
+Install-WindowsFeature RSAT-AD-PowerShell
+
+# Test that the server can retrieve the password
+Test-ADServiceAccount -Identity "gMSA_SQLService"
+
+# Install the gMSA on the server
+Install-ADServiceAccount -Identity "gMSA_SQLService"</code></pre>
+
+            <h3>2.5 Configure Service to Use gMSA</h3>
+            <pre data-lang="PowerShell"><code># Configure a Windows service to use gMSA
+# Note: The account name ends with $ and password is left blank
+$serviceName = "MSSQLSERVER"
+$gmsaAccount = "DOMAIN\gMSA_SQLService$"
+
+# Using sc.exe
+sc.exe config $serviceName obj= $gmsaAccount password= ""
+
+# Or via PowerShell (for services that support it)
+Set-Service -Name $serviceName -Credential (New-Object PSCredential($gmsaAccount, (New-Object SecureString)))</code></pre>
+
+            <h3>2.6 gMSA Migration Checklist</h3>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Service Type</th>
+                            <th>gMSA Support</th>
+                            <th>Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>SQL Server</td>
+                            <td>✓ Full Support</td>
+                            <td>2012+ supports gMSA natively</td>
+                        </tr>
+                        <tr>
+                            <td>IIS Application Pools</td>
+                            <td>✓ Full Support</td>
+                            <td>IIS 7.5+ on Server 2012+</td>
+                        </tr>
+                        <tr>
+                            <td>Windows Services</td>
+                            <td>✓ Full Support</td>
+                            <td>Most services work out of box</td>
+                        </tr>
+                        <tr>
+                            <td>Scheduled Tasks</td>
+                            <td>✓ Full Support</td>
+                            <td>Use Task Scheduler GUI or PowerShell</td>
+                        </tr>
+                        <tr>
+                            <td>Exchange</td>
+                            <td>⚠️ Limited</td>
+                            <td>Not all components supported</td>
+                        </tr>
+                        <tr>
+                            <td>Third-party Apps</td>
+                            <td>⚠️ Varies</td>
+                            <td>Check vendor documentation</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Section 3: Encryption -->
+        <section id="encryption" class="section blue">
+            <div class="section-number">Section 03</div>
+            <h2>Enforce AES Encryption</h2>
+            
+            <p>By default, Kerberos can use RC4 (NTLM hash) encryption, which is faster to crack. Enforcing AES encryption significantly increases cracking difficulty.</p>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value">RC4</div>
+                    <div class="stat-label">~1.5M hashes/sec (GPU)</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">AES</div>
+                    <div class="stat-label">~200K hashes/sec (GPU)</div>
+                </div>
+            </div>
+
+            <div class="alert alert-info">
+                <span class="alert-icon">💡</span>
+                <div class="alert-content">
+                    <strong>AES is Harder to Crack</strong>
+                    <p>AES-encrypted Kerberos tickets are approximately 7-10x slower to crack than RC4. Combined with strong passwords, this provides significant defense-in-depth.</p>
+                </div>
+            </div>
+
+            <h3>3.1 Configure Service Accounts for AES Only</h3>
+            <pre data-lang="PowerShell"><code># Set a service account to only support AES encryption
+Set-ADUser -Identity "svc_sqlserver" -KerberosEncryptionType AES128,AES256
+
+# For a gMSA
+Set-ADServiceAccount -Identity "gMSA_SQLService" -KerberosEncryptionType AES128,AES256
+
+# Verify the setting
+Get-ADUser -Identity "svc_sqlserver" -Properties msDS-SupportedEncryptionTypes | 
+    Select-Object Name, @{N='EncryptionTypes';E={$_.'msDS-SupportedEncryptionTypes'}}</code></pre>
+
+            <h4>Encryption Type Values:</h4>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Value</th>
+                            <th>Encryption Types</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>0x1</code> (1)</td>
+                            <td>DES-CBC-CRC</td>
+                        </tr>
+                        <tr>
+                            <td><code>0x2</code> (2)</td>
+                            <td>DES-CBC-MD5</td>
+                        </tr>
+                        <tr>
+                            <td><code>0x4</code> (4)</td>
+                            <td>RC4-HMAC</td>
+                        </tr>
+                        <tr>
+                            <td><code>0x8</code> (8)</td>
+                            <td>AES128-CTS-HMAC-SHA1-96</td>
+                        </tr>
+                        <tr>
+                            <td><code>0x10</code> (16)</td>
+                            <td>AES256-CTS-HMAC-SHA1-96</td>
+                        </tr>
+                        <tr>
+                            <td><code>0x18</code> (24)</td>
+                            <td>AES128 + AES256 (Recommended)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3>3.2 Bulk Update All Service Accounts</h3>
+            <pre data-lang="PowerShell"><code># Find all accounts with SPNs and update to AES
+Get-ADUser -Filter {ServicePrincipalName -like "*"} -Properties ServicePrincipalName | ForEach-Object {
+    Write-Host "Updating: $($_.Name)" -ForegroundColor Cyan
+    Set-ADUser -Identity $_ -KerberosEncryptionType AES128,AES256
+}
+
+# Verify changes
+Get-ADUser -Filter {ServicePrincipalName -like "*"} -Properties msDS-SupportedEncryptionTypes, ServicePrincipalName |
+    Select-Object Name, @{N='EncTypes';E={$_.'msDS-SupportedEncryptionTypes'}}, 
+                  @{N='SPNs';E={($_.ServicePrincipalName | Select-Object -First 2) -join "; "}} |
+    Format-Table -AutoSize</code></pre>
+
+            <h3>3.3 Domain-Wide RC4 Restrictions (Careful!)</h3>
+            <p>You can restrict RC4 domain-wide via Group Policy, but test thoroughly first:</p>
+            
+            <pre><code>Computer Configuration → Policies → Windows Settings → Security Settings → Local Policies → Security Options
+→ Network security: Configure encryption types allowed for Kerberos</code></pre>
+
+            <div class="alert alert-warning">
+                <span class="alert-icon">⚠️</span>
+                <div class="alert-content">
+                    <strong>Compatibility Warning</strong>
+                    <p>Disabling RC4 domain-wide can break legacy applications and older Windows clients. Test in a lab environment first and audit before enforcing.</p>
+                </div>
+            </div>
+
+            <h3>3.4 Audit RC4 Usage</h3>
+            <pre data-lang="PowerShell"><code># Enable Kerberos operation logging
+wevtutil set-log "Microsoft-Windows-Kerberos/Operational" /enabled:true
+
+# Look for RC4 ticket requests (Event ID 4769)
+Get-WinEvent -FilterHashtable @{LogName='Security'; ID=4769} -MaxEvents 1000 | 
+    Where-Object { $_.Properties[5].Value -eq '0x17' } |  # 0x17 = RC4
+    Select-Object TimeCreated, 
+                  @{N='ServiceName';E={$_.Properties[0].Value}},
+                  @{N='ClientAddress';E={$_.Properties[6].Value}} |
+    Group-Object ServiceName | Sort-Object Count -Descending</code></pre>
+        </section>
+
+        <!-- Section 4: SPN Audit -->
+        <section id="spn" class="section">
+            <div class="section-number">Section 04</div>
+            <h2>Audit and Reduce SPN Exposure</h2>
+            
+            <p>Minimize your attack surface by removing unnecessary SPNs and identifying high-value targets.</p>
+
+            <h3>4.1 Find All User Accounts with SPNs</h3>
+            <pre data-lang="PowerShell"><code># Enumerate all Kerberoastable accounts
+Get-ADUser -Filter {ServicePrincipalName -like "*"} -Properties ServicePrincipalName, 
+    PasswordLastSet, Enabled, AdminCount, MemberOf |
+    Select-Object Name, Enabled, 
+                  @{N='IsAdmin';E={$_.AdminCount -eq 1}},
+                  @{N='PasswordAge';E={(New-TimeSpan -Start $_.PasswordLastSet).Days}},
+                  @{N='SPNCount';E={$_.ServicePrincipalName.Count}},
+                  @{N='SPNs';E={$_.ServicePrincipalName -join "; "}} |
+    Sort-Object IsAdmin, PasswordAge -Descending |
+    Format-Table -AutoSize</code></pre>
+
+            <h3>4.2 Identify High-Value Targets</h3>
+            <pre data-lang="PowerShell"><code># Find privileged accounts with SPNs (HIGH RISK)
+Get-ADUser -Filter {(AdminCount -eq 1) -and (ServicePrincipalName -like "*")} `
+    -Properties ServicePrincipalName, MemberOf, PasswordLastSet |
+    Select-Object Name, 
+                  @{N='Groups';E={($_.MemberOf | ForEach-Object { (Get-ADGroup $_).Name }) -join ", "}},
+                  @{N='SPNs';E={$_.ServicePrincipalName -join "; "}},
+                  PasswordLastSet</code></pre>
+
+            <div class="alert alert-danger">
+                <span class="alert-icon">🛑</span>
+                <div class="alert-content">
+                    <strong>Critical Finding</strong>
+                    <p>Any account with AdminCount=1 and an SPN is a critical risk. A successful Kerberoast of these accounts leads directly to domain compromise.</p>
+                </div>
+            </div>
+
+            <h3>4.3 Remove Unnecessary SPNs</h3>
+            <pre data-lang="PowerShell"><code># List SPNs for a specific account
+Get-ADUser -Identity "svc_account" -Properties ServicePrincipalName | 
+    Select-Object -ExpandProperty ServicePrincipalName
+
+# Remove a specific SPN
+Set-ADUser -Identity "svc_account" -ServicePrincipalNames @{Remove="HTTP/oldserver.domain.local"}
+
+# Remove all SPNs from an account (be careful!)
+Set-ADUser -Identity "old_svc_account" -ServicePrincipalNames @{Clear=$null}</code></pre>
+
+            <h3>4.4 Find Duplicate SPNs</h3>
+            <pre data-lang="PowerShell"><code># Check for duplicate SPNs (can cause authentication issues)
+setspn -X
+
+# Or via PowerShell
+$allSPNs = Get-ADObject -Filter {ServicePrincipalName -like "*"} -Properties ServicePrincipalName |
+    ForEach-Object { 
+        foreach ($spn in $_.ServicePrincipalName) { 
+            [PSCustomObject]@{SPN=$spn; Account=$_.Name} 
+        }
+    }
+
+$allSPNs | Group-Object SPN | Where-Object { $_.Count -gt 1 } | 
+    Select-Object @{N='DuplicateSPN';E={$_.Name}}, Count, 
+                  @{N='Accounts';E={($_.Group.Account) -join ", "}}</code></pre>
+
+            <h3>4.5 Computer Accounts with SPNs</h3>
+            <p>Computer accounts have SPNs by default but use strong machine passwords. Focus on user accounts:</p>
+            <pre data-lang="PowerShell"><code># Count user vs computer accounts with SPNs
+$userSPNs = (Get-ADUser -Filter {ServicePrincipalName -like "*"}).Count
+$compSPNs = (Get-ADComputer -Filter {ServicePrincipalName -like "*"}).Count
+
+Write-Host "User accounts with SPNs: $userSPNs (AUDIT THESE)" -ForegroundColor Yellow
+Write-Host "Computer accounts with SPNs: $compSPNs (Lower risk)" -ForegroundColor Green</code></pre>
+        </section>
+
+        <!-- Section 5: Detection -->
+        <section id="detection" class="section red">
+            <div class="section-number">Section 05</div>
+            <h2>Detection and Monitoring</h2>
+            
+            <p>While prevention is key, detection provides defense-in-depth. Monitor for anomalous TGS requests that indicate Kerberoasting activity.</p>
+
+            <h3>5.1 Enable Kerberos Service Ticket Auditing</h3>
+            <pre data-lang="PowerShell"><code># Enable via Group Policy or locally
+auditpol /set /subcategory:"Kerberos Service Ticket Operations" /success:enable /failure:enable
+
+# Verify
+auditpol /get /subcategory:"Kerberos Service Ticket Operations"</code></pre>
+
+            <h4>Via Group Policy:</h4>
+            <pre><code>Computer Configuration → Policies → Windows Settings → Security Settings → 
+Advanced Audit Policy Configuration → Audit Policies → Account Logon
+→ Audit Kerberos Service Ticket Operations = Success, Failure</code></pre>
+
+            <h3>5.2 Key Event IDs</h3>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Event ID</th>
+                            <th>Description</th>
+                            <th>Detection Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>4769</code></td>
+                            <td>Kerberos Service Ticket Requested</td>
+                            <td>Primary detection event</td>
+                        </tr>
+                        <tr>
+                            <td><code>4770</code></td>
+                            <td>Kerberos Service Ticket Renewed</td>
+                            <td>Normal activity baseline</td>
+                        </tr>
+                        <tr>
+                            <td><code>4768</code></td>
+                            <td>Kerberos TGT Requested</td>
+                            <td>Context for attacks</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3>5.3 Detection Indicators</h3>
+            <p>Look for these patterns in Event ID 4769:</p>
+
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Indicator</th>
+                            <th>Normal</th>
+                            <th>Suspicious</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Encryption Type</td>
+                            <td><code>0x12</code> (AES256)</td>
+                            <td><code>0x17</code> (RC4) when AES available</td>
+                        </tr>
+                        <tr>
+                            <td>Request Volume</td>
+                            <td>Few per user/day</td>
+                            <td>Many SPNs in short time</td>
+                        </tr>
+                        <tr>
+                            <td>Service Names</td>
+                            <td>Known services</td>
+                            <td>Many different service accounts</td>
+                        </tr>
+                        <tr>
+                            <td>Failure Code</td>
+                            <td><code>0x0</code></td>
+                            <td>Multiple failures then success</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3>5.4 PowerShell Detection Query</h3>
+            <pre data-lang="PowerShell"><code># Find potential Kerberoasting - RC4 ticket requests
+$startTime = (Get-Date).AddHours(-24)
+
+Get-WinEvent -FilterHashtable @{
+    LogName = 'Security'
+    ID = 4769
+    StartTime = $startTime
+} | Where-Object {
+    # Filter for RC4 encryption (0x17) and user accounts (not machine accounts)
+    $_.Properties[5].Value -eq '0x17' -and 
+    $_.Properties[0].Value -notmatch '\$$'
+} | Select-Object TimeCreated,
+    @{N='ServiceName';E={$_.Properties[0].Value}},
+    @{N='UserName';E={$_.Properties[1].Value}},
+    @{N='ClientIP';E={$_.Properties[6].Value}},
+    @{N='EncryptionType';E={$_.Properties[5].Value}} |
+    Group-Object UserName | 
+    Where-Object { $_.Count -gt 5 } |  # Threshold: more than 5 requests
+    Sort-Object Count -Descending</code></pre>
+
+            <h3>5.5 SIEM/Sigma Detection Rules</h3>
+            <pre data-lang="YAML"><code>title: Potential Kerberoasting Activity
+status: experimental
+description: Detects potential Kerberoasting via RC4 service ticket requests
+logsource:
+    product: windows
+    service: security
+detection:
+    selection:
+        EventID: 4769
+        TicketEncryptionType: '0x17'  # RC4
+        Status: '0x0'  # Success
+    filter:
+        ServiceName|endswith: '$'  # Exclude machine accounts
+    condition: selection and not filter
+    timeframe: 1h
+    count() by TargetUserName > 10
+level: medium
+tags:
+    - attack.credential_access
+    - attack.t1558.003</code></pre>
+
+            <h3>5.6 Honeypot Service Account</h3>
+            <p>Create a decoy service account that should never be legitimately accessed:</p>
+            <pre data-lang="PowerShell"><code># Create honeypot service account
+New-ADUser -Name "svc_dvbackup" `
+    -SamAccountName "svc_dvbackup" `
+    -Description "Backup Service Account - DO NOT USE" `
+    -Enabled $true `
+    -PasswordNeverExpires $true `
+    -CannotChangePassword $true `
+    -AccountPassword (ConvertTo-SecureString "HoneypotP@ssw0rd123!" -AsPlainText -Force)
+
+# Add an enticing SPN
+Set-ADUser -Identity "svc_dvbackup" -ServicePrincipalNames @{Add="MSSQL/dvbackup.domain.local"}
+
+# Create alert for any access to this account
+# Monitor Event ID 4769 where ServiceName = "svc_dvbackup"</code></pre>
+
+            <div class="alert alert-success">
+                <span class="alert-icon">🎯</span>
+                <div class="alert-content">
+                    <strong>High-Fidelity Alert</strong>
+                    <p>Any TGS request for the honeypot account is a strong indicator of Kerberoasting activity and should trigger immediate investigation.</p>
+                </div>
+            </div>
+
+            <h3>5.7 Microsoft Defender for Identity</h3>
+            <p>If available, Microsoft Defender for Identity (formerly Azure ATP) provides built-in Kerberoasting detection:</p>
+            <ul>
+                <li>Suspicious Kerberos ticket request</li>
+                <li>Abnormal resource access</li>
+                <li>Encryption downgrade activities</li>
+                <li>Service account enumeration</li>
+            </ul>
+        </section>
+
+        <!-- Section 6: Checklist -->
+        <section id="checklist" class="section green">
+            <div class="section-number">Section 06</div>
+            <h2>Implementation Checklist</h2>
+
+            <h3>Password Hardening</h3>
+            <div class="checklist">
+                <div class="checklist-item">
+                    <input type="checkbox" id="k1">
+                    <label for="k1">Audit all accounts with SPNs</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="k2">
+                    <label for="k2">Create fine-grained password policy (25+ chars)</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="k3">
+                    <label for="k3">Apply policy to service accounts group</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="k4">
+                    <label for="k4">Rotate service account passwords to new policy</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="k5">
+                    <label for="k5">Store passwords in PAM/vault solution</label>
+                </div>
+            </div>
+
+            <h3>gMSA Migration</h3>
+            <div class="checklist">
+                <div class="checklist-item">
+                    <input type="checkbox" id="k6">
+                    <label for="k6">Verify domain functional level 2012+</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="k7">
+                    <label for="k7">Create KDS root key</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="k8">
+                    <label for="k8">Identify services that support gMSA</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="k9">
+                    <label for="k9">Migrate SQL Server accounts to gMSA</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="k10">
+                    <label for="k10">Migrate IIS application pools to gMSA</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="k11">
+                    <label for="k11">Migrate scheduled tasks to gMSA</label>
+                </div>
+            </div>
+
+            <h3>Encryption Hardening</h3>
+            <div class="checklist">
+                <div class="checklist-item">
+                    <input type="checkbox" id="k12">
+                    <label for="k12">Audit current encryption types in use</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="k13">
+                    <label for="k13">Set all service accounts to AES encryption</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="k14">
+                    <label for="k14">Test AES-only with critical applications</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="k15">
+                    <label for="k15">Consider domain-wide RC4 restrictions</label>
+                </div>
+            </div>
+
+            <h3>SPN Hygiene</h3>
+            <div class="checklist">
+                <div class="checklist-item">
+                    <input type="checkbox" id="k16">
+                    <label for="k16">Remove SPNs from privileged accounts</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="k17">
+                    <label for="k17">Remove unnecessary/legacy SPNs</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="k18">
+                    <label for="k18">Check for and resolve duplicate SPNs</label>
+                </div>
+            </div>
+
+            <h3>Detection & Monitoring</h3>
+            <div class="checklist">
+                <div class="checklist-item">
+                    <input type="checkbox" id="k19">
+                    <label for="k19">Enable Kerberos service ticket auditing</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="k20">
+                    <label for="k20">Create SIEM alerts for Event ID 4769</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="k21">
+                    <label for="k21">Deploy honeypot service account</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="k22">
+                    <label for="k22">Configure alerts for RC4 ticket requests</label>
+                </div>
+            </div>
+        </section>
+
+        <!-- Quick Reference -->
+        <section class="section">
+            <div class="section-number">Quick Reference</div>
+            <h2>Command Cheat Sheet</h2>
+
+            <h3>Find Kerberoastable Accounts</h3>
+            <pre data-lang="PowerShell"><code># Quick enumeration
+Get-ADUser -Filter {ServicePrincipalName -like "*"} -Properties ServicePrincipalName | Select-Object Name, ServicePrincipalName</code></pre>
+
+            <h3>Set AES Encryption</h3>
+            <pre data-lang="PowerShell"><code>Set-ADUser -Identity "svc_account" -KerberosEncryptionType AES128,AES256</code></pre>
+
+            <h3>Create gMSA</h3>
+            <pre data-lang="PowerShell"><code>New-ADServiceAccount -Name "gMSA_Name" -DNSHostName "gMSA_Name.domain.local" -PrincipalsAllowedToRetrieveManagedPassword "ServerGroup"</code></pre>
+
+            <h3>Check Password Age</h3>
+            <pre data-lang="PowerShell"><code>Get-ADUser -Filter {ServicePrincipalName -like "*"} -Properties PasswordLastSet | Select-Object Name, PasswordLastSet | Sort-Object PasswordLastSet</code></pre>
+
+            <h3>Enable Auditing</h3>
+            <pre data-lang="PowerShell"><code>auditpol /set /subcategory:"Kerberos Service Ticket Operations" /success:enable /failure:enable</code></pre>
+        </section>
+
+    </main>
+
+    <footer>
+        <p>Kerberoasting Hardening Guide</p>
+        <p style="margin-top: 0.5rem;">References: <a href="https://docs.microsoft.com/en-us/windows-server/security/group-managed-service-accounts/group-managed-service-accounts-overview" target="_blank">Microsoft gMSA Documentation</a> • <a href="https://attack.mitre.org/techniques/T1558/003/" target="_blank">MITRE ATT&CK T1558.003</a></p>
+    </footer>
+
+    <script>
+        // Save checkbox state to localStorage
+        document.querySelectorAll('.checklist-item input').forEach(checkbox => {
+            const saved = localStorage.getItem('kerb_' + checkbox.id);
+            if (saved === 'true') checkbox.checked = true;
+            
+            checkbox.addEventListener('change', () => {
+                localStorage.setItem('kerb_' + checkbox.id, checkbox.checked);
+            });
+        });
+
+        // Smooth scroll for nav links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                const headerOffset = 80;
+                const elementPosition = target.getBoundingClientRect().top;
+                const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+
+                window.scrollTo({
+                    top: offsetPosition,
+                    behavior: 'smooth'
+                });
+            });
+        });
+    </script>
+</body>
+</html>
