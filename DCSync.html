@@ -1,0 +1,1878 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DCSync Attack Hardening Guide</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0a0a;
+            --bg-secondary: #111111;
+            --bg-tertiary: #1a1a1a;
+            --bg-card: #1f1f1f;
+            --border-color: #333333;
+            --text-primary: #f0f0f0;
+            --text-secondary: #a0a0a0;
+            --text-muted: #666666;
+            --accent-red: #ef4444;
+            --accent-rose: #f43f5e;
+            --accent-pink: #ec4899;
+            --accent-orange: #f97316;
+            --accent-amber: #f59e0b;
+            --accent-green: #22c55e;
+            --accent-cyan: #06b6d4;
+            --accent-blue: #3b82f6;
+            --accent-purple: #a855f7;
+            --code-bg: #0d0d0d;
+            --gradient-red: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            --gradient-rose: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%);
+            --gradient-orange: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+            --gradient-purple: linear-gradient(135deg, #a855f7 0%, #9333ea 100%);
+            --gradient-blue: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            --gradient-green: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Source Sans 3', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.7;
+            font-size: 16px;
+        }
+
+        /* Animated background */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(ellipse at 10% 10%, rgba(239, 68, 68, 0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at 90% 90%, rgba(244, 63, 94, 0.06) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 50%, rgba(168, 85, 247, 0.04) 0%, transparent 60%);
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        /* Scan line effect */
+        body::after {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(0, 0, 0, 0.1) 2px,
+                rgba(0, 0, 0, 0.1) 4px
+            );
+            pointer-events: none;
+            z-index: -1;
+            opacity: 0.3;
+        }
+
+        /* Header */
+        header {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+            background: rgba(17, 17, 17, 0.95);
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 1.2rem;
+            color: var(--accent-red);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .logo::before {
+            content: '⚠';
+            font-size: 1.1rem;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        nav ul {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+        }
+
+        nav a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        nav a:hover {
+            color: var(--accent-red);
+        }
+
+        /* Hero */
+        .hero {
+            padding: 6rem 2rem;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 900px;
+            height: 900px;
+            background: 
+                radial-gradient(circle at 30% 30%, rgba(239, 68, 68, 0.15) 0%, transparent 40%),
+                radial-gradient(circle at 70% 70%, rgba(168, 85, 247, 0.1) 0%, transparent 40%);
+            pointer-events: none;
+        }
+
+        .severity-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1.25rem;
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid rgba(239, 68, 68, 0.4);
+            border-radius: 9999px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--accent-red);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 1.5rem;
+            animation: glow 2s ease-in-out infinite;
+        }
+
+        @keyframes glow {
+            0%, 100% { box-shadow: 0 0 20px rgba(239, 68, 68, 0.3); }
+            50% { box-shadow: 0 0 40px rgba(239, 68, 68, 0.5); }
+        }
+
+        .hero h1 {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: clamp(2rem, 5vw, 3.5rem);
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            background: var(--gradient-red);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero p {
+            color: var(--text-secondary);
+            font-size: 1.2rem;
+            max-width: 800px;
+            margin: 0 auto 2rem;
+        }
+
+        .hero-badges {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 9999px;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .badge-icon {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .badge-icon.critical { background: var(--accent-red); }
+        .badge-icon.warning { background: var(--accent-orange); }
+        .badge-icon.info { background: var(--accent-cyan); }
+
+        /* Main content */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* Attack overview card */
+        .attack-overview {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 2.5rem;
+            margin-bottom: 3rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .attack-overview::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: var(--gradient-red);
+        }
+
+        /* Impact cards */
+        .impact-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+
+        .impact-card {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .impact-card.critical {
+            border-color: rgba(239, 68, 68, 0.3);
+        }
+
+        .impact-card.critical::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--accent-red);
+        }
+
+        .impact-icon {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        .impact-title {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 600;
+            font-size: 1rem;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .impact-desc {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        /* Attack flow */
+        .attack-flow {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin: 2rem 0;
+            justify-content: center;
+        }
+
+        .attack-step {
+            flex: 1;
+            min-width: 180px;
+            max-width: 220px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+            position: relative;
+        }
+
+        .attack-step::after {
+            content: '→';
+            position: absolute;
+            right: -1.25rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--accent-red);
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        .attack-step:last-child::after {
+            display: none;
+        }
+
+        .attack-step-number {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            background: var(--gradient-red);
+            border-radius: 50%;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 0.85rem;
+            color: white;
+            margin-bottom: 0.75rem;
+        }
+
+        .attack-step-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .attack-step-desc {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 0.5rem;
+        }
+
+        /* Section cards */
+        .section {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 2.5rem;
+            margin-bottom: 2rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: var(--gradient-red);
+        }
+
+        .section.purple::before {
+            background: var(--gradient-purple);
+        }
+
+        .section.blue::before {
+            background: var(--gradient-blue);
+        }
+
+        .section.orange::before {
+            background: var(--gradient-orange);
+        }
+
+        .section.green::before {
+            background: var(--gradient-green);
+        }
+
+        .section-number {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--accent-red);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 0.5rem;
+        }
+
+        h2 {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.75rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            color: var(--text-primary);
+        }
+
+        h3 {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin: 2rem 0 1rem;
+            color: var(--accent-rose);
+        }
+
+        h4 {
+            font-size: 1rem;
+            font-weight: 600;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+
+        p {
+            margin-bottom: 1rem;
+            color: var(--text-secondary);
+        }
+
+        /* Code blocks */
+        pre {
+            background: var(--code-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.25rem;
+            overflow-x: auto;
+            margin: 1rem 0;
+            position: relative;
+        }
+
+        pre::before {
+            content: attr(data-lang);
+            position: absolute;
+            top: 0.5rem;
+            right: 0.75rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            color: var(--accent-red);
+        }
+
+        pre code {
+            color: var(--text-primary);
+        }
+
+        /* Inline code */
+        p code, li code, td code {
+            background: var(--bg-tertiary);
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.85em;
+        }
+
+        /* Tables */
+        .table-wrapper {
+            overflow-x: auto;
+            margin: 1.5rem 0;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        th {
+            background: var(--bg-tertiary);
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 600;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-secondary);
+            text-align: left;
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        td {
+            padding: 0.875rem 1rem;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-secondary);
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background: rgba(239, 68, 68, 0.03);
+        }
+
+        /* Alert boxes */
+        .alert {
+            padding: 1.25rem 1.5rem;
+            border-radius: 8px;
+            margin: 1.5rem 0;
+            display: flex;
+            gap: 1rem;
+            align-items: flex-start;
+        }
+
+        .alert-icon {
+            font-size: 1.25rem;
+            flex-shrink: 0;
+            margin-top: 0.1rem;
+        }
+
+        .alert-warning {
+            background: rgba(249, 115, 22, 0.1);
+            border: 1px solid rgba(249, 115, 22, 0.3);
+        }
+
+        .alert-warning .alert-icon { color: var(--accent-orange); }
+
+        .alert-danger {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .alert-danger .alert-icon { color: var(--accent-red); }
+
+        .alert-info {
+            background: rgba(6, 182, 212, 0.1);
+            border: 1px solid rgba(6, 182, 212, 0.3);
+        }
+
+        .alert-info .alert-icon { color: var(--accent-cyan); }
+
+        .alert-success {
+            background: rgba(34, 197, 94, 0.1);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+
+        .alert-success .alert-icon { color: var(--accent-green); }
+
+        .alert-content strong {
+            display: block;
+            color: var(--text-primary);
+            margin-bottom: 0.25rem;
+        }
+
+        .alert-content p {
+            margin: 0;
+            font-size: 0.9rem;
+        }
+
+        /* Lists */
+        ul, ol {
+            margin: 1rem 0 1rem 1.5rem;
+            color: var(--text-secondary);
+        }
+
+        li {
+            margin-bottom: 0.5rem;
+        }
+
+        li::marker {
+            color: var(--accent-red);
+        }
+
+        /* Permission visualization */
+        .permission-visual {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+
+        .permission-row {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem 1.5rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+        }
+
+        .permission-icon {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            font-size: 1.25rem;
+        }
+
+        .permission-icon.danger {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--accent-red);
+        }
+
+        .permission-icon.warning {
+            background: rgba(249, 115, 22, 0.2);
+            color: var(--accent-orange);
+        }
+
+        .permission-details {
+            flex: 1;
+        }
+
+        .permission-name {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: var(--text-primary);
+        }
+
+        .permission-desc {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .permission-guid {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            background: var(--bg-primary);
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+        }
+
+        /* Checklist section */
+        .checklist {
+            display: grid;
+            gap: 0.75rem;
+        }
+
+        .checklist-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem 1.25rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .checklist-item:hover {
+            border-color: var(--accent-red);
+            transform: translateX(4px);
+        }
+
+        .checklist-item input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            accent-color: var(--accent-red);
+            cursor: pointer;
+        }
+
+        .checklist-item label {
+            cursor: pointer;
+            flex: 1;
+            color: var(--text-secondary);
+        }
+
+        .checklist-item input:checked + label {
+            text-decoration: line-through;
+            color: var(--text-muted);
+        }
+
+        /* Table of contents */
+        .toc {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .toc h3 {
+            margin-top: 0;
+            color: var(--text-primary);
+        }
+
+        .toc ol {
+            margin: 0;
+            padding-left: 1.25rem;
+        }
+
+        .toc li {
+            margin-bottom: 0.75rem;
+        }
+
+        .toc a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .toc a:hover {
+            color: var(--accent-red);
+        }
+
+        /* ACL Diagram */
+        .acl-diagram {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            margin: 2rem 0;
+            text-align: center;
+        }
+
+        .acl-target {
+            display: inline-block;
+            padding: 1rem 2rem;
+            background: var(--gradient-red);
+            border-radius: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 600;
+            color: white;
+            margin-bottom: 1.5rem;
+        }
+
+        .acl-arrow {
+            font-size: 2rem;
+            color: var(--accent-red);
+            margin: 0.5rem 0;
+        }
+
+        .acl-principals {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .acl-principal {
+            padding: 0.75rem 1.25rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 0.85rem;
+        }
+
+        .acl-principal.default {
+            border-color: rgba(34, 197, 94, 0.3);
+            color: var(--accent-green);
+        }
+
+        .acl-principal.dangerous {
+            border-color: rgba(239, 68, 68, 0.3);
+            color: var(--accent-red);
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 3rem 2rem;
+            border-top: 1px solid var(--border-color);
+            margin-top: 4rem;
+        }
+
+        footer p {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        footer a {
+            color: var(--accent-red);
+            text-decoration: none;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header-content {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            nav ul {
+                gap: 1rem;
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+
+            .hero {
+                padding: 4rem 1.5rem;
+            }
+
+            .section {
+                padding: 1.5rem;
+            }
+
+            .attack-step::after {
+                display: none;
+            }
+
+            pre {
+                font-size: 0.8rem;
+            }
+
+            .permission-row {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .permission-guid {
+                margin-top: 0.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <div class="logo">DCSYNC_DEFENSE</div>
+            <nav>
+                <ul>
+                    <li><a href="#overview">Overview</a></li>
+                    <li><a href="#audit">Audit</a></li>
+                    <li><a href="#permissions">Permissions</a></li>
+                    <li><a href="#protection">Protection</a></li>
+                    <li><a href="#detection">Detection</a></li>
+                    <li><a href="#checklist">Checklist</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <section class="hero">
+        <div class="severity-badge">
+            <span>●</span> Critical Severity
+        </div>
+        <h1>DCSync Attack Hardening Guide</h1>
+        <p>Protect your Active Directory from complete domain compromise by securing directory replication permissions, implementing proper access controls, and establishing robust detection mechanisms.</p>
+        <div class="hero-badges">
+            <span class="badge"><span class="badge-icon critical"></span>Full Domain Compromise</span>
+            <span class="badge"><span class="badge-icon warning"></span>All Password Hashes</span>
+            <span class="badge"><span class="badge-icon info"></span>Golden Ticket Creation</span>
+        </div>
+    </section>
+
+    <main class="container">
+        <!-- Attack Overview -->
+        <section id="overview" class="attack-overview">
+            <div class="section-number">Understanding The Threat</div>
+            <h2>How DCSync Works</h2>
+            
+            <p>DCSync abuses legitimate Active Directory replication protocols. An attacker with <strong>Replicating Directory Changes</strong> and <strong>Replicating Directory Changes All</strong> permissions can impersonate a Domain Controller and request password data for any account, including the KRBTGT account used to sign all Kerberos tickets.</p>
+
+            <div class="attack-flow">
+                <div class="attack-step">
+                    <div class="attack-step-number">1</div>
+                    <div class="attack-step-title">Gain Privileges</div>
+                    <div class="attack-step-desc">Compromise account with replication rights</div>
+                </div>
+                <div class="attack-step">
+                    <div class="attack-step-number">2</div>
+                    <div class="attack-step-title">Request Replication</div>
+                    <div class="attack-step-desc">Use DRS protocol (DRSUAPI)</div>
+                </div>
+                <div class="attack-step">
+                    <div class="attack-step-number">3</div>
+                    <div class="attack-step-title">Extract Hashes</div>
+                    <div class="attack-step-desc">Receive password data from DC</div>
+                </div>
+                <div class="attack-step">
+                    <div class="attack-step-number">4</div>
+                    <div class="attack-step-title">Total Compromise</div>
+                    <div class="attack-step-desc">Golden Ticket, persistence</div>
+                </div>
+            </div>
+
+            <div class="impact-grid">
+                <div class="impact-card critical">
+                    <div class="impact-icon">🔑</div>
+                    <div class="impact-title">All Password Hashes</div>
+                    <div class="impact-desc">Extract NTLM hashes for every account in the domain, including service accounts and administrators.</div>
+                </div>
+                <div class="impact-card critical">
+                    <div class="impact-icon">🎫</div>
+                    <div class="impact-title">KRBTGT Hash Access</div>
+                    <div class="impact-desc">Obtain the KRBTGT hash to forge Golden Tickets, granting unlimited access as any user.</div>
+                </div>
+                <div class="impact-card critical">
+                    <div class="impact-icon">👻</div>
+                    <div class="impact-title">Undetectable Persistence</div>
+                    <div class="impact-desc">Golden Tickets remain valid even after password resets unless KRBTGT is rotated twice.</div>
+                </div>
+                <div class="impact-card critical">
+                    <div class="impact-icon">🌐</div>
+                    <div class="impact-title">Forest Compromise</div>
+                    <div class="impact-desc">With Enterprise Admin or KRBTGT hash, attackers can compromise entire AD forests.</div>
+                </div>
+            </div>
+
+            <div class="alert alert-danger">
+                <span class="alert-icon">💀</span>
+                <div class="alert-content">
+                    <strong>This Is Game Over</strong>
+                    <p>A successful DCSync attack typically means complete and total domain compromise. The attacker can impersonate any user, access any resource, and maintain persistent access indefinitely. Prevention and detection are critical.</p>
+                </div>
+            </div>
+        </section>
+
+        <div class="toc">
+            <h3>Hardening Measures</h3>
+            <ol>
+                <li><a href="#audit">Audit Current Replication Permissions</a></li>
+                <li><a href="#permissions">Lock Down Replication Rights</a></li>
+                <li><a href="#protection">Protect Privileged Accounts</a></li>
+                <li><a href="#tiering">Implement Administrative Tiering</a></li>
+                <li><a href="#detection">Detection and Monitoring</a></li>
+                <li><a href="#response">Incident Response</a></li>
+                <li><a href="#checklist">Implementation Checklist</a></li>
+            </ol>
+        </div>
+
+        <!-- Section 1: Audit -->
+        <section id="audit" class="section">
+            <div class="section-number">Section 01</div>
+            <h2>Audit Current Replication Permissions</h2>
+            
+            <p>The first step is understanding who currently has the dangerous permissions that enable DCSync attacks.</p>
+
+            <h3>1.1 Required Permissions for DCSync</h3>
+            <p>An attacker needs <strong>both</strong> of these permissions on the domain object:</p>
+
+            <div class="permission-visual">
+                <div class="permission-row">
+                    <div class="permission-icon danger">🔄</div>
+                    <div class="permission-details">
+                        <div class="permission-name">Replicating Directory Changes</div>
+                        <div class="permission-desc">Allows reading of AD object properties during replication</div>
+                    </div>
+                    <div class="permission-guid">1131f6aa-9c07-11d1-f79f-00c04fc2dcd2</div>
+                </div>
+                <div class="permission-row">
+                    <div class="permission-icon danger">🔓</div>
+                    <div class="permission-details">
+                        <div class="permission-name">Replicating Directory Changes All</div>
+                        <div class="permission-desc">Allows reading of secret attributes (passwords, credential data)</div>
+                    </div>
+                    <div class="permission-guid">1131f6ad-9c07-11d1-f79f-00c04fc2dcd2</div>
+                </div>
+                <div class="permission-row">
+                    <div class="permission-icon warning">📁</div>
+                    <div class="permission-details">
+                        <div class="permission-name">Replicating Directory Changes In Filtered Set</div>
+                        <div class="permission-desc">Used for RODC replication (less dangerous alone)</div>
+                    </div>
+                    <div class="permission-guid">89e95b76-444d-4c62-991a-0facbeda640c</div>
+                </div>
+            </div>
+
+            <h3>1.2 Find All Principals with DCSync Rights</h3>
+            <pre data-lang="PowerShell"><code># Import AD module
+Import-Module ActiveDirectory
+
+# Get domain distinguished name
+$domainDN = (Get-ADDomain).DistinguishedName
+
+# Define the DCSync-related GUIDs
+$replicationGUIDs = @{
+    'Replicating Directory Changes' = '1131f6aa-9c07-11d1-f79f-00c04fc2dcd2'
+    'Replicating Directory Changes All' = '1131f6ad-9c07-11d1-f79f-00c04fc2dcd2'
+    'Replicating Directory Changes In Filtered Set' = '89e95b76-444d-4c62-991a-0facbeda640c'
+}
+
+# Get ACL on domain object
+$acl = Get-ACL "AD:\$domainDN"
+
+# Find principals with replication rights
+$dcsyncPrincipals = $acl.Access | Where-Object {
+    $_.ObjectType -in $replicationGUIDs.Values -and
+    $_.AccessControlType -eq 'Allow'
+} | Select-Object @{N='Principal';E={$_.IdentityReference}},
+    @{N='Permission';E={
+        $guid = $_.ObjectType.ToString()
+        ($replicationGUIDs.GetEnumerator() | Where-Object { $_.Value -eq $guid }).Key
+    }},
+    @{N='Inherited';E={$_.IsInherited}}
+
+$dcsyncPrincipals | Format-Table -AutoSize</code></pre>
+
+            <h3>1.3 Expected vs. Suspicious Principals</h3>
+            
+            <div class="acl-diagram">
+                <div class="acl-target">Domain Object Replication Rights</div>
+                <div class="acl-arrow">↓</div>
+                <div class="acl-principals">
+                    <div class="acl-principal default">Domain Controllers</div>
+                    <div class="acl-principal default">Enterprise Domain Controllers</div>
+                    <div class="acl-principal default">Administrators</div>
+                    <div class="acl-principal default">Domain Admins</div>
+                    <div class="acl-principal default">Enterprise Admins</div>
+                    <div class="acl-principal dangerous">❌ Any other account</div>
+                </div>
+            </div>
+
+            <div class="alert alert-warning">
+                <span class="alert-icon">⚠️</span>
+                <div class="alert-content">
+                    <strong>Red Flags</strong>
+                    <p>Any user account, service account, or non-default group with replication rights should be investigated immediately. Common misconfigurations include: Azure AD Connect accounts (expected but should be monitored), backup software service accounts, and incorrectly delegated admin accounts.</p>
+                </div>
+            </div>
+
+            <h3>1.4 PowerShell Script: Full DCSync Audit</h3>
+            <pre data-lang="PowerShell"><code># Comprehensive DCSync permissions audit
+function Get-DCSyncPermissions {
+    $domainDN = (Get-ADDomain).DistinguishedName
+    $domainSID = (Get-ADDomain).DomainSID.Value
+    
+    # Known safe SIDs (relative to domain)
+    $safeSIDs = @(
+        "$domainSID-500",  # Administrator
+        "$domainSID-502",  # KRBTGT
+        "$domainSID-512",  # Domain Admins
+        "$domainSID-516",  # Domain Controllers
+        "$domainSID-518",  # Schema Admins
+        "$domainSID-519",  # Enterprise Admins
+        "$domainSID-521",  # Read-Only Domain Controllers
+        "S-1-5-9",         # Enterprise Domain Controllers
+        "S-1-5-32-544"     # BUILTIN\Administrators
+    )
+    
+    $acl = Get-ACL "AD:\$domainDN"
+    $results = @()
+    
+    foreach ($ace in $acl.Access) {
+        $guid = $ace.ObjectType.ToString()
+        
+        # Check if this is a replication permission
+        if ($guid -in @('1131f6aa-9c07-11d1-f79f-00c04fc2dcd2', 
+                        '1131f6ad-9c07-11d1-f79f-00c04fc2dcd2')) {
+            
+            # Try to resolve SID
+            try {
+                $sid = (New-Object System.Security.Principal.NTAccount($ace.IdentityReference)).Translate(
+                    [System.Security.Principal.SecurityIdentifier]).Value
+            } catch {
+                $sid = "Unknown"
+            }
+            
+            $isSafe = $sid -in $safeSIDs -or $ace.IdentityReference -match 'MSOL_|AAD_'
+            
+            $results += [PSCustomObject]@{
+                Principal = $ace.IdentityReference
+                SID = $sid
+                Permission = if ($guid -eq '1131f6aa-9c07-11d1-f79f-00c04fc2dcd2') { 
+                    'Replicating Directory Changes' 
+                } else { 
+                    'Replicating Directory Changes All' 
+                }
+                Inherited = $ace.IsInherited
+                Status = if ($isSafe) { '✓ Expected' } else { '⚠ INVESTIGATE' }
+            }
+        }
+    }
+    
+    return $results
+}
+
+# Run audit
+$auditResults = Get-DCSyncPermissions
+$auditResults | Format-Table -AutoSize
+
+# Export to CSV
+$auditResults | Export-Csv -Path "DCSync_Audit_$(Get-Date -Format 'yyyyMMdd').csv" -NoTypeInformation</code></pre>
+
+            <h3>1.5 Check for Azure AD Connect</h3>
+            <p>Azure AD Connect legitimately requires DCSync permissions. Identify and document these accounts:</p>
+            <pre data-lang="PowerShell"><code># Find Azure AD Connect service accounts
+Get-ADUser -Filter {SamAccountName -like "MSOL_*" -or SamAccountName -like "AAD_*"} -Properties Description, Created |
+    Select-Object Name, SamAccountName, Description, Created, Enabled |
+    Format-Table -AutoSize
+
+# Verify these are the only non-default accounts with DCSync rights
+$auditResults | Where-Object { $_.Status -eq '⚠ INVESTIGATE' }</code></pre>
+        </section>
+
+        <!-- Section 2: Permissions -->
+        <section id="permissions" class="section purple">
+            <div class="section-number">Section 02</div>
+            <h2>Lock Down Replication Rights</h2>
+            
+            <p>Remove unnecessary replication permissions and implement least-privilege access.</p>
+
+            <h3>2.1 Remove Unauthorized DCSync Permissions</h3>
+            <pre data-lang="PowerShell"><code># Remove DCSync permissions from a specific principal
+function Remove-DCSyncPermission {
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$Principal
+    )
+    
+    $domainDN = (Get-ADDomain).DistinguishedName
+    $acl = Get-ACL "AD:\$domainDN"
+    
+    # GUIDs to remove
+    $replicationGUIDs = @(
+        [GUID]'1131f6aa-9c07-11d1-f79f-00c04fc2dcd2',  # Replicating Directory Changes
+        [GUID]'1131f6ad-9c07-11d1-f79f-00c04fc2dcd2'   # Replicating Directory Changes All
+    )
+    
+    $identity = New-Object System.Security.Principal.NTAccount($Principal)
+    
+    foreach ($guid in $replicationGUIDs) {
+        $ace = New-Object System.DirectoryServices.ActiveDirectoryAccessRule(
+            $identity,
+            [System.DirectoryServices.ActiveDirectoryRights]::ExtendedRight,
+            [System.Security.AccessControl.AccessControlType]::Allow,
+            $guid
+        )
+        $acl.RemoveAccessRule($ace) | Out-Null
+    }
+    
+    Set-ACL "AD:\$domainDN" -AclObject $acl
+    Write-Host "Removed DCSync permissions from: $Principal" -ForegroundColor Green
+}
+
+# Example: Remove from a compromised account
+# Remove-DCSyncPermission -Principal "DOMAIN\SuspiciousAccount"</code></pre>
+
+            <div class="alert alert-danger">
+                <span class="alert-icon">🛑</span>
+                <div class="alert-content">
+                    <strong>Warning: Test First!</strong>
+                    <p>Before removing permissions, verify the account is not legitimately required (e.g., Azure AD Connect, backup solutions). Removing required permissions can break critical services.</p>
+                </div>
+            </div>
+
+            <h3>2.2 Protect the AdminSDHolder Container</h3>
+            <p>AdminSDHolder protects privileged accounts. Ensure it hasn't been modified:</p>
+            <pre data-lang="PowerShell"><code># Check AdminSDHolder ACL for suspicious entries
+$adminSDHolder = "CN=AdminSDHolder,CN=System,$((Get-ADDomain).DistinguishedName)"
+$acl = Get-ACL "AD:\$adminSDHolder"
+
+# List all non-inherited ACEs
+$acl.Access | Where-Object { -not $_.IsInherited } |
+    Select-Object IdentityReference, ActiveDirectoryRights, AccessControlType |
+    Format-Table -AutoSize
+
+# Check for any accounts with GenericAll, WriteDacl, or WriteOwner
+$dangerousRights = @('GenericAll', 'WriteDacl', 'WriteOwner', 'GenericWrite')
+$acl.Access | Where-Object { 
+    $rights = $_.ActiveDirectoryRights.ToString()
+    ($dangerousRights | Where-Object { $rights -match $_ }).Count -gt 0
+} | Select-Object IdentityReference, ActiveDirectoryRights</code></pre>
+
+            <h3>2.3 Implement Just-In-Time (JIT) Access</h3>
+            <p>Rather than permanent DCSync permissions, use time-limited access:</p>
+            
+            <h4>Option A: Microsoft Identity Manager (MIM) PAM</h4>
+            <ul>
+                <li>Provides time-bound group membership</li>
+                <li>Requires MIM infrastructure</li>
+                <li>Best for enterprise environments</li>
+            </ul>
+
+            <h4>Option B: Simple JIT Script</h4>
+            <pre data-lang="PowerShell"><code># Grant temporary DCSync access (for emergency use only)
+function Grant-TemporaryDCSync {
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$Principal,
+        
+        [Parameter(Mandatory=$true)]
+        [int]$DurationMinutes,
+        
+        [Parameter(Mandatory=$true)]
+        [string]$Reason
+    )
+    
+    # Log the access grant
+    $logEntry = [PSCustomObject]@{
+        Timestamp = Get-Date
+        Principal = $Principal
+        Duration = $DurationMinutes
+        Reason = $Reason
+        GrantedBy = $env:USERNAME
+    }
+    $logEntry | Export-Csv -Path "C:\Logs\DCSync_JIT.csv" -Append -NoTypeInformation
+    
+    # Add to a temporary group that has DCSync rights
+    Add-ADGroupMember -Identity "Emergency-DCSync-Access" -Members $Principal
+    
+    Write-Host "Granted DCSync access to $Principal for $DurationMinutes minutes" -ForegroundColor Yellow
+    Write-Host "Access will be automatically revoked." -ForegroundColor Yellow
+    
+    # Schedule removal
+    $removeTime = (Get-Date).AddMinutes($DurationMinutes)
+    $action = New-ScheduledTaskAction -Execute "PowerShell.exe" -Argument `
+        "-Command Remove-ADGroupMember -Identity 'Emergency-DCSync-Access' -Members '$Principal' -Confirm:`$false"
+    $trigger = New-ScheduledTaskTrigger -Once -At $removeTime
+    Register-ScheduledTask -TaskName "Remove-DCSync-$Principal" -Action $action -Trigger $trigger -Force
+}</code></pre>
+
+            <h3>2.4 Secure Azure AD Connect Account</h3>
+            <p>If using Azure AD Connect, additional protections should be applied:</p>
+            <pre data-lang="PowerShell"><code># Find Azure AD Connect account
+$aadcAccount = Get-ADUser -Filter {SamAccountName -like "MSOL_*"} -Properties *
+
+if ($aadcAccount) {
+    # Ensure account is in Protected Users (if supported by AAD Connect version)
+    # Note: Test thoroughly - some versions don't support this
+    
+    # Enable "Account is sensitive and cannot be delegated"
+    Set-ADUser -Identity $aadcAccount -AccountNotDelegated $true
+    
+    # Ensure strong, random password
+    Write-Host "Azure AD Connect Account: $($aadcAccount.SamAccountName)" -ForegroundColor Cyan
+    Write-Host "Consider rotating the password and storing in a PAM solution" -ForegroundColor Yellow
+}</code></pre>
+        </section>
+
+        <!-- Section 3: Protection -->
+        <section id="protection" class="section blue">
+            <div class="section-number">Section 03</div>
+            <h2>Protect Privileged Accounts</h2>
+            
+            <p>Attackers typically need to first compromise a privileged account before they can perform DCSync. Protecting these accounts is critical defense-in-depth.</p>
+
+            <h3>3.1 Protected Users Security Group</h3>
+            <p>Members of this group have additional protections against credential theft:</p>
+            <pre data-lang="PowerShell"><code># Add high-value accounts to Protected Users
+$privilegedAccounts = @(
+    "Admin-T0-John",
+    "Admin-T0-Jane",
+    "svc_critical"
+)
+
+foreach ($account in $privilegedAccounts) {
+    Add-ADGroupMember -Identity "Protected Users" -Members $account
+    Write-Host "Added $account to Protected Users" -ForegroundColor Green
+}
+
+# Verify membership
+Get-ADGroupMember -Identity "Protected Users" | Select-Object Name, SamAccountName</code></pre>
+
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Protection</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>No NTLM</td>
+                            <td>Cannot authenticate using NTLM (Kerberos only)</td>
+                        </tr>
+                        <tr>
+                            <td>No Delegation</td>
+                            <td>Cannot be delegated via Kerberos delegation</td>
+                        </tr>
+                        <tr>
+                            <td>No DES/RC4</td>
+                            <td>Kerberos uses AES encryption only</td>
+                        </tr>
+                        <tr>
+                            <td>Short TGT</td>
+                            <td>Kerberos TGT lifetime limited to 4 hours</td>
+                        </tr>
+                        <tr>
+                            <td>No Credential Caching</td>
+                            <td>Plaintext credentials not cached on devices</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="alert alert-warning">
+                <span class="alert-icon">⚠️</span>
+                <div class="alert-content">
+                    <strong>Compatibility Note</strong>
+                    <p>Protected Users can break legacy applications. Test accounts thoroughly before adding to this group. Service accounts may have issues if they rely on NTLM or delegation.</p>
+                </div>
+            </div>
+
+            <h3>3.2 Enable Credential Guard</h3>
+            <p>Credential Guard uses virtualization-based security to protect credentials:</p>
+            <pre data-lang="PowerShell"><code># Check if Credential Guard is available and enabled
+Get-CimInstance -ClassName Win32_DeviceGuard -Namespace root\Microsoft\Windows\DeviceGuard |
+    Select-Object AvailableSecurityProperties, SecurityServicesConfigured, SecurityServicesRunning, VirtualizationBasedSecurityStatus
+
+# Enable via Group Policy:
+# Computer Configuration → Administrative Templates → System → Device Guard
+# → Turn On Virtualization Based Security = Enabled
+# → Credential Guard Configuration = Enabled with UEFI lock
+
+# Or enable via registry (requires Secure Boot and TPM)
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\DeviceGuard" /v "EnableVirtualizationBasedSecurity" /t REG_DWORD /d 1 /f
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\Lsa" /v "LsaCfgFlags" /t REG_DWORD /d 1 /f</code></pre>
+
+            <h3>3.3 Disable Credential Caching</h3>
+            <p>Reduce cached credentials on workstations:</p>
+            <pre data-lang="PowerShell"><code># Set cached logons to 0-1 on sensitive systems
+# Via GPO: Computer Configuration → Windows Settings → Security Settings → Local Policies → Security Options
+# "Interactive logon: Number of previous logons to cache" = 0 or 1
+
+# Via Registry
+reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v "CachedLogonsCount" /t REG_SZ /d "1" /f</code></pre>
+
+            <h3>3.4 Implement LAPS for Local Admins</h3>
+            <p>Local Administrator Password Solution prevents lateral movement:</p>
+            <pre data-lang="PowerShell"><code># Check LAPS deployment status
+Get-ADComputer -Filter * -Properties ms-Mcs-AdmPwdExpirationTime | 
+    Where-Object { $_.'ms-Mcs-AdmPwdExpirationTime' -ne $null } |
+    Select-Object Name, @{N='PasswordExpires';E={[DateTime]::FromFileTime($_.'ms-Mcs-AdmPwdExpirationTime')}}
+
+# Verify LAPS GPO is applied
+Get-ADComputer -Filter * -Properties ms-Mcs-AdmPwdExpirationTime | 
+    Where-Object { $_.'ms-Mcs-AdmPwdExpirationTime' -eq $null } |
+    Select-Object Name</code></pre>
+        </section>
+
+        <!-- Section 4: Tiering -->
+        <section id="tiering" class="section orange">
+            <div class="section-number">Section 04</div>
+            <h2>Implement Administrative Tiering</h2>
+            
+            <p>Administrative tiering limits the blast radius of compromised accounts by segregating privileges across tiers.</p>
+
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Tier</th>
+                            <th>Assets</th>
+                            <th>DCSync Risk</th>
+                            <th>Controls</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Tier 0</strong></td>
+                            <td>Domain Controllers, AD, PKI, Identity Systems</td>
+                            <td>Direct risk - these accounts can DCSync</td>
+                            <td>PAWs only, no internet, maximum monitoring</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Tier 1</strong></td>
+                            <td>Member Servers, Applications, Databases</td>
+                            <td>Compromise can lead to Tier 0 attacks</td>
+                            <td>Separate admin accounts, jump servers</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Tier 2</strong></td>
+                            <td>Workstations, User Devices</td>
+                            <td>Common initial compromise point</td>
+                            <td>Standard users, limited admin rights</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3>4.1 Tier 0 Isolation</h3>
+            <pre data-lang="PowerShell"><code># Create Tier 0 OU structure
+$domainDN = (Get-ADDomain).DistinguishedName
+
+# Create Tier 0 OUs
+New-ADOrganizationalUnit -Name "Tier 0" -Path $domainDN
+New-ADOrganizationalUnit -Name "Accounts" -Path "OU=Tier 0,$domainDN"
+New-ADOrganizationalUnit -Name "Groups" -Path "OU=Tier 0,$domainDN"
+New-ADOrganizationalUnit -Name "Servers" -Path "OU=Tier 0,$domainDN"
+New-ADOrganizationalUnit -Name "PAWs" -Path "OU=Tier 0,$domainDN"
+
+# Create Tier 0 admin group
+New-ADGroup -Name "Tier0-Admins" -GroupScope Global -GroupCategory Security `
+    -Path "OU=Groups,OU=Tier 0,$domainDN" `
+    -Description "Tier 0 administrators with DC and AD access"</code></pre>
+
+            <h3>4.2 Authentication Policies (Windows Server 2012 R2+)</h3>
+            <p>Restrict where Tier 0 accounts can authenticate:</p>
+            <pre data-lang="PowerShell"><code># Create Authentication Policy for Tier 0
+New-ADAuthenticationPolicy -Name "Tier0-AuthPolicy" `
+    -Description "Restricts Tier 0 accounts to Tier 0 systems" `
+    -UserTGTLifetimeMins 240 `
+    -Enforce
+
+# Create Authentication Policy Silo
+New-ADAuthenticationPolicySilo -Name "Tier0-Silo" `
+    -Description "Tier 0 Authentication Silo" `
+    -UserAuthenticationPolicy "Tier0-AuthPolicy" `
+    -ComputerAuthenticationPolicy "Tier0-AuthPolicy" `
+    -ServiceAuthenticationPolicy "Tier0-AuthPolicy" `
+    -Enforce
+
+# Add Tier 0 computers to silo
+$tier0Computers = Get-ADComputer -Filter * -SearchBase "OU=Domain Controllers,$domainDN"
+foreach ($computer in $tier0Computers) {
+    Set-ADComputer -Identity $computer -AuthenticationPolicySilo "Tier0-Silo"
+}
+
+# Add Tier 0 users to silo
+$tier0Users = Get-ADGroupMember -Identity "Tier0-Admins"
+foreach ($user in $tier0Users) {
+    Set-ADUser -Identity $user -AuthenticationPolicySilo "Tier0-Silo"
+}</code></pre>
+
+            <h3>4.3 Privileged Access Workstations (PAWs)</h3>
+            <div class="alert alert-info">
+                <span class="alert-icon">💻</span>
+                <div class="alert-content">
+                    <strong>PAW Requirements</strong>
+                    <p>Tier 0 administration should only occur from dedicated Privileged Access Workstations: clean OS installation, no email/browsing, Credential Guard enabled, restricted network access, hardware security keys for authentication.</p>
+                </div>
+            </div>
+
+            <h3>4.4 Block Tier 0 Logon to Lower Tiers</h3>
+            <pre data-lang="PowerShell"><code># Create GPO to deny Tier 0 accounts from logging into workstations
+# Link to Workstation OUs
+
+# In the GPO:
+# Computer Configuration → Policies → Windows Settings → Security Settings → 
+# Local Policies → User Rights Assignment
+
+# "Deny log on locally" = Tier0-Admins, Domain Admins, Enterprise Admins
+# "Deny log on through Remote Desktop Services" = Same groups
+# "Deny access to this computer from the network" = Same groups (for workstations)</code></pre>
+        </section>
+
+        <!-- Section 5: Detection -->
+        <section id="detection" class="section">
+            <div class="section-number">Section 05</div>
+            <h2>Detection and Monitoring</h2>
+            
+            <p>Since DCSync uses legitimate replication protocols, detection focuses on identifying anomalous replication requests.</p>
+
+            <h3>5.1 Enable Directory Service Access Auditing</h3>
+            <pre data-lang="PowerShell"><code># Enable via Group Policy on Domain Controllers:
+# Computer Configuration → Policies → Windows Settings → Security Settings →
+# Advanced Audit Policy Configuration → DS Access
+
+# Or via auditpol
+auditpol /set /subcategory:"Directory Service Access" /success:enable /failure:enable
+auditpol /set /subcategory:"Directory Service Changes" /success:enable /failure:enable
+auditpol /set /subcategory:"Directory Service Replication" /success:enable /failure:enable</code></pre>
+
+            <h3>5.2 Key Event IDs for DCSync Detection</h3>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Event ID</th>
+                            <th>Log</th>
+                            <th>Description</th>
+                            <th>Detection Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>4662</code></td>
+                            <td>Security</td>
+                            <td>Operation performed on directory object</td>
+                            <td>Primary DCSync detection</td>
+                        </tr>
+                        <tr>
+                            <td><code>4929</code></td>
+                            <td>Security</td>
+                            <td>Active Directory replica source naming context removed</td>
+                            <td>Replication anomalies</td>
+                        </tr>
+                        <tr>
+                            <td><code>4742</code></td>
+                            <td>Security</td>
+                            <td>Computer account changed</td>
+                            <td>New DC additions</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3>5.3 Configure Event ID 4662 for DCSync Detection</h3>
+            <p>Event 4662 requires specific SACL configuration to detect DCSync:</p>
+            <pre data-lang="PowerShell"><code># Add SACL to domain object for replication monitoring
+$domainDN = (Get-ADDomain).DistinguishedName
+$acl = Get-ACL "AD:\$domainDN"
+
+# Create audit rule for replication rights
+$everyone = New-Object System.Security.Principal.SecurityIdentifier("S-1-1-0")
+
+# Audit "Replicating Directory Changes All" access
+$auditRule = New-Object System.DirectoryServices.ActiveDirectoryAuditRule(
+    $everyone,
+    [System.DirectoryServices.ActiveDirectoryRights]::ExtendedRight,
+    [System.Security.AccessControl.AuditFlags]::Success,
+    [GUID]"1131f6ad-9c07-11d1-f79f-00c04fc2dcd2"  # Replicating Directory Changes All
+)
+
+$acl.AddAuditRule($auditRule)
+Set-ACL "AD:\$domainDN" -AclObject $acl
+
+Write-Host "SACL configured for DCSync detection" -ForegroundColor Green</code></pre>
+
+            <h3>5.4 PowerShell Detection Query</h3>
+            <pre data-lang="PowerShell"><code># Detect potential DCSync attacks via Event 4662
+$startTime = (Get-Date).AddHours(-24)
+
+# DCSync-related GUIDs
+$dcsyncGUIDs = @(
+    '{1131f6aa-9c07-11d1-f79f-00c04fc2dcd2}',  # DS-Replication-Get-Changes
+    '{1131f6ad-9c07-11d1-f79f-00c04fc2dcd2}',  # DS-Replication-Get-Changes-All
+    '{89e95b76-444d-4c62-991a-0facbeda640c}'   # DS-Replication-Get-Changes-In-Filtered-Set
+)
+
+# Get events from all DCs
+$domainControllers = Get-ADDomainController -Filter * | Select-Object -ExpandProperty HostName
+
+foreach ($dc in $domainControllers) {
+    Write-Host "Checking $dc..." -ForegroundColor Cyan
+    
+    try {
+        Get-WinEvent -ComputerName $dc -FilterHashtable @{
+            LogName = 'Security'
+            ID = 4662
+            StartTime = $startTime
+        } -ErrorAction SilentlyContinue | Where-Object {
+            $_.Properties[9].Value -in $dcsyncGUIDs
+        } | ForEach-Object {
+            $account = $_.Properties[1].Value
+            $domain = $_.Properties[2].Value
+            $guid = $_.Properties[9].Value
+            
+            # Filter out legitimate DC replication
+            if ($account -notmatch '\$$') {  # Not a computer account
+                [PSCustomObject]@{
+                    Time = $_.TimeCreated
+                    DC = $dc
+                    Account = "$domain\$account"
+                    Operation = switch ($guid) {
+                        '{1131f6aa-9c07-11d1-f79f-00c04fc2dcd2}' { 'Replicating Directory Changes' }
+                        '{1131f6ad-9c07-11d1-f79f-00c04fc2dcd2}' { 'Replicating Directory Changes All' }
+                        '{89e95b76-444d-4c62-991a-0facbeda640c}' { 'Replicating Directory Changes In Filtered Set' }
+                    }
+                    Status = 'ALERT - Non-DC Replication Request'
+                }
+            }
+        }
+    } catch {
+        Write-Warning "Could not query $dc"
+    }
+}</code></pre>
+
+            <h3>5.5 SIEM/Sigma Detection Rules</h3>
+            <pre data-lang="YAML"><code>title: Potential DCSync Attack
+status: experimental
+description: Detects DCSync attack by monitoring for replication permission use by non-DC accounts
+author: Security Team
+logsource:
+    product: windows
+    service: security
+detection:
+    selection:
+        EventID: 4662
+        Properties|contains:
+            - '1131f6aa-9c07-11d1-f79f-00c04fc2dcd2'
+            - '1131f6ad-9c07-11d1-f79f-00c04fc2dcd2'
+    filter_dc:
+        SubjectUserName|endswith: '$'
+        SubjectUserName|contains: 
+            - 'DC'
+            - 'DOMAIN CONTROLLER'
+    filter_azuread:
+        SubjectUserName|startswith:
+            - 'MSOL_'
+            - 'AAD_'
+    condition: selection and not filter_dc and not filter_azuread
+level: critical
+tags:
+    - attack.credential_access
+    - attack.t1003.006
+falsepositives:
+    - Azure AD Connect synchronization
+    - Legitimate admin tools querying AD</code></pre>
+
+            <h3>5.6 Microsoft Defender for Identity</h3>
+            <p>If available, MDI provides built-in DCSync detection:</p>
+            <ul>
+                <li><strong>Suspected DCSync attack (replication of directory services)</strong> - Primary detection</li>
+                <li><strong>Malicious replication of directory services</strong> - Replication from non-DC</li>
+                <li><strong>Suspicious additions to sensitive groups</strong> - Privilege escalation leading to DCSync</li>
+            </ul>
+        </section>
+
+        <!-- Section 6: Response -->
+        <section id="response" class="section">
+            <div class="section-number">Section 06</div>
+            <h2>Incident Response</h2>
+            
+            <p>If you detect a DCSync attack, immediate action is required. Assume full domain compromise.</p>
+
+            <h3>6.1 Immediate Actions</h3>
+            <div class="alert alert-danger">
+                <span class="alert-icon">🚨</span>
+                <div class="alert-content">
+                    <strong>DCSync Detected - Emergency Response</strong>
+                    <p>1. Isolate compromised systems immediately<br>
+                    2. Disable the attacking account<br>
+                    3. Begin password reset planning for ALL accounts<br>
+                    4. Engage incident response team</p>
+                </div>
+            </div>
+
+            <h3>6.2 KRBTGT Password Reset</h3>
+            <p>Reset KRBTGT twice to invalidate all existing Kerberos tickets:</p>
+            <pre data-lang="PowerShell"><code># KRBTGT reset script - RUN WITH EXTREME CAUTION
+# This will invalidate all Kerberos tickets domain-wide
+
+# First reset
+Write-Host "Performing first KRBTGT password reset..." -ForegroundColor Yellow
+Set-ADAccountPassword -Identity krbtgt -Reset -NewPassword (
+    ConvertTo-SecureString (
+        [System.Web.Security.Membership]::GeneratePassword(32,8)
+    ) -AsPlainText -Force
+)
+Write-Host "First reset complete. Wait for replication..." -ForegroundColor Green
+
+# Verify replication
+repadmin /syncall /APed
+
+# IMPORTANT: Wait at least 10 hours (maximum TGT lifetime) before second reset
+Write-Host "WAIT AT LEAST 10 HOURS before the second reset!" -ForegroundColor Red
+Write-Host "Monitor for authentication issues during this period." -ForegroundColor Yellow
+
+# Second reset (run after waiting period)
+# Set-ADAccountPassword -Identity krbtgt -Reset -NewPassword (...)</code></pre>
+
+            <div class="alert alert-warning">
+                <span class="alert-icon">⚠️</span>
+                <div class="alert-content">
+                    <strong>KRBTGT Reset Impact</strong>
+                    <p>Resetting KRBTGT will cause temporary authentication failures. Plan for: service restarts, user re-authentication, application credential refresh. Test in lab first if possible.</p>
+                </div>
+            </div>
+
+            <h3>6.3 Full Domain Password Reset</h3>
+            <p>After KRBTGT reset, rotate all privileged account passwords:</p>
+            <pre data-lang="PowerShell"><code># Priority order for password resets:
+# 1. All Domain Admins
+# 2. All Enterprise Admins  
+# 3. All Tier 0 service accounts
+# 4. Azure AD Connect account
+# 5. All other privileged accounts
+# 6. Consider all domain users
+
+# Get accounts that need immediate reset
+$criticalAccounts = @()
+$criticalAccounts += Get-ADGroupMember -Identity "Domain Admins" -Recursive
+$criticalAccounts += Get-ADGroupMember -Identity "Enterprise Admins" -Recursive
+$criticalAccounts += Get-ADGroupMember -Identity "Administrators" -Recursive
+
+$criticalAccounts | Select-Object -Unique | ForEach-Object {
+    Write-Host "Reset required: $($_.SamAccountName)" -ForegroundColor Red
+}</code></pre>
+
+            <h3>6.4 Post-Incident Hardening</h3>
+            <ul>
+                <li>Implement all hardening measures from this guide</li>
+                <li>Deploy enhanced monitoring</li>
+                <li>Conduct full security assessment</li>
+                <li>Review and remove unnecessary privileges</li>
+                <li>Consider domain rebuild for severe compromises</li>
+            </ul>
+        </section>
+
+        <!-- Section 7: Checklist -->
+        <section id="checklist" class="section green">
+            <div class="section-number">Section 07</div>
+            <h2>Implementation Checklist</h2>
+
+            <h3>Audit & Visibility</h3>
+            <div class="checklist">
+                <div class="checklist-item">
+                    <input type="checkbox" id="d1">
+                    <label for="d1">Audit all principals with DCSync permissions</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="d2">
+                    <label for="d2">Document legitimate accounts (Azure AD Connect, etc.)</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="d3">
+                    <label for="d3">Enable Directory Service auditing on all DCs</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="d4">
+                    <label for="d4">Configure SACL for Event 4662 detection</label>
+                </div>
+            </div>
+
+            <h3>Permission Hardening</h3>
+            <div class="checklist">
+                <div class="checklist-item">
+                    <input type="checkbox" id="d5">
+                    <label for="d5">Remove DCSync rights from unauthorized accounts</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="d6">
+                    <label for="d6">Review AdminSDHolder ACL for modifications</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="d7">
+                    <label for="d7">Implement JIT access for emergency replication needs</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="d8">
+                    <label for="d8">Secure Azure AD Connect account</label>
+                </div>
+            </div>
+
+            <h3>Account Protection</h3>
+            <div class="checklist">
+                <div class="checklist-item">
+                    <input type="checkbox" id="d9">
+                    <label for="d9">Add privileged accounts to Protected Users group</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="d10">
+                    <label for="d10">Enable Credential Guard on sensitive systems</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="d11">
+                    <label for="d11">Deploy LAPS for local administrator passwords</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="d12">
+                    <label for="d12">Reduce credential caching on workstations</label>
+                </div>
+            </div>
+
+            <h3>Administrative Tiering</h3>
+            <div class="checklist">
+                <div class="checklist-item">
+                    <input type="checkbox" id="d13">
+                    <label for="d13">Create Tier 0/1/2 OU structure</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="d14">
+                    <label for="d14">Implement Authentication Policies and Silos</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="d15">
+                    <label for="d15">Deploy Privileged Access Workstations for Tier 0</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="d16">
+                    <label for="d16">Block Tier 0 logon to lower tier systems</label>
+                </div>
+            </div>
+
+            <h3>Detection & Response</h3>
+            <div class="checklist">
+                <div class="checklist-item">
+                    <input type="checkbox" id="d17">
+                    <label for="d17">Create SIEM alerts for Event 4662 DCSync patterns</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="d18">
+                    <label for="d18">Deploy Microsoft Defender for Identity (if available)</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="d19">
+                    <label for="d19">Document KRBTGT reset procedure</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="d20">
+                    <label for="d20">Create incident response runbook for DCSync detection</label>
+                </div>
+            </div>
+        </section>
+
+        <!-- Quick Reference -->
+        <section class="section">
+            <div class="section-number">Quick Reference</div>
+            <h2>Command Cheat Sheet</h2>
+
+            <h3>Audit DCSync Permissions</h3>
+            <pre data-lang="PowerShell"><code>Get-ACL "AD:\$((Get-ADDomain).DistinguishedName)" | Select-Object -ExpandProperty Access | 
+Where-Object { $_.ObjectType -match '1131f6a[ad]' } | Select-Object IdentityReference</code></pre>
+
+            <h3>Find Non-DC Replication Requests</h3>
+            <pre data-lang="PowerShell"><code>Get-WinEvent -FilterHashtable @{LogName='Security';ID=4662} | Where-Object { 
+$_.Properties[9].Value -match '1131f6ad' -and $_.Properties[1].Value -notmatch '\$$' }</code></pre>
+
+            <h3>Add to Protected Users</h3>
+            <pre data-lang="PowerShell"><code>Add-ADGroupMember -Identity "Protected Users" -Members "admin-account"</code></pre>
+
+            <h3>Check Credential Guard Status</h3>
+            <pre data-lang="PowerShell"><code>Get-CimInstance -ClassName Win32_DeviceGuard -Namespace root\Microsoft\Windows\DeviceGuard</code></pre>
+
+            <h3>Emergency KRBTGT Reset</h3>
+            <pre data-lang="PowerShell"><code># First reset - then wait 10+ hours - then second reset
+Set-ADAccountPassword -Identity krbtgt -Reset -NewPassword (ConvertTo-SecureString (
+[System.Web.Security.Membership]::GeneratePassword(32,8)) -AsPlainText -Force)</code></pre>
+        </section>
+
+    </main>
+
+    <footer>
+        <p>DCSync Attack Hardening Guide</p>
+        <p style="margin-top: 0.5rem;">References: <a href="https://attack.mitre.org/techniques/T1003/006/" target="_blank">MITRE ATT&CK T1003.006</a> • <a href="https://docs.microsoft.com/en-us/windows-server/identity/ad-ds/plan/security-best-practices/best-practices-for-securing-active-directory" target="_blank">Microsoft AD Security Best Practices</a></p>
+    </footer>
+
+    <script>
+        // Save checkbox state to localStorage
+        document.querySelectorAll('.checklist-item input').forEach(checkbox => {
+            const saved = localStorage.getItem('dcsync_' + checkbox.id);
+            if (saved === 'true') checkbox.checked = true;
+            
+            checkbox.addEventListener('change', () => {
+                localStorage.setItem('dcsync_' + checkbox.id, checkbox.checked);
+            });
+        });
+
+        // Smooth scroll for nav links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                const headerOffset = 80;
+                const elementPosition = target.getBoundingClientRect().top;
+                const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+
+                window.scrollTo({
+                    top: offsetPosition,
+                    behavior: 'smooth'
+                });
+            });
+        });
+    </script>
+</body>
+</html>
