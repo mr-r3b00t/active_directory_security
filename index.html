@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Active Directory Hardening Guides</title>
+    <meta name="description" content="Comprehensive security hardening guides for Active Directory environments. Protect against DCSync, Kerberoasting, NTLM Relay, and other common attacks.">
+    <meta name="keywords" content="Active Directory, Security, Hardening, DCSync, Kerberoasting, NTLM Relay, Cybersecurity">
+    <meta property="og:title" content="Active Directory Hardening Guides">
+    <meta property="og:description" content="Comprehensive security hardening guides for Active Directory environments.">
+    <meta property="og:type" content="website">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #030308;
+            --bg-secondary: #0a0a12;
+            --bg-tertiary: #12121f;
+            --bg-card: #16162a;
+            --border-color: #252540;
+            --text-primary: #f0f0f5;
+            --text-secondary: #9090a8;
+            --text-muted: #606078;
+            --accent-red: #ef4444;
+            --accent-gold: #fbbf24;
+            --accent-cyan: #00d4ff;
+            --accent-purple: #a855f7;
+            --accent-green: #22c55e;
+            --accent-blue: #3b82f6;
+            --gradient-main: linear-gradient(135deg, #a855f7 0%, #3b82f6 50%, #00d4ff 100%);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.7;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Animated gradient background */
+        .bg-gradient {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -2;
+            background: 
+                radial-gradient(ellipse at 0% 0%, rgba(168, 85, 247, 0.15) 0%, transparent 50%),
+                radial-gradient(ellipse at 100% 0%, rgba(59, 130, 246, 0.1) 0%, transparent 50%),
+                radial-gradient(ellipse at 100% 100%, rgba(0, 212, 255, 0.1) 0%, transparent 50%),
+                radial-gradient(ellipse at 0% 100%, rgba(239, 68, 68, 0.08) 0%, transparent 50%);
+            animation: gradientShift 15s ease-in-out infinite alternate;
+        }
+
+        @keyframes gradientShift {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+
+        /* Grid pattern overlay */
+        .bg-grid {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+            background-image: 
+                linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+            background-size: 60px 60px;
+        }
+
+        /* Header */
+        header {
+            padding: 1.5rem 2rem;
+            position: relative;
+            z-index: 10;
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            text-decoration: none;
+        }
+
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: var(--gradient-main);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+        }
+
+        .github-link {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.9rem;
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+
+        .github-link:hover {
+            color: var(--text-primary);
+            border-color: var(--accent-purple);
+            background: rgba(168, 85, 247, 0.1);
+        }
+
+        .github-link svg {
+            width: 20px;
+            height: 20px;
+            fill: currentColor;
+        }
+
+        /* Hero Section */
+        .hero {
+            padding: 6rem 2rem 4rem;
+            text-align: center;
+            position: relative;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: rgba(168, 85, 247, 0.15);
+            border: 1px solid rgba(168, 85, 247, 0.3);
+            border-radius: 9999px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--accent-purple);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 2rem;
+        }
+
+        .hero h1 {
+            font-size: clamp(2.5rem, 6vw, 4.5rem);
+            font-weight: 700;
+            line-height: 1.1;
+            margin-bottom: 1.5rem;
+            background: var(--gradient-main);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero p {
+            font-size: 1.25rem;
+            color: var(--text-secondary);
+            max-width: 700px;
+            margin: 0 auto 3rem;
+        }
+
+        /* Stats Row */
+        .stats-row {
+            display: flex;
+            justify-content: center;
+            gap: 3rem;
+            flex-wrap: wrap;
+            margin-bottom: 2rem;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: var(--gradient-main);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Main Content */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* Section Title */
+        .section-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .section-header h2 {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            color: var(--accent-cyan);
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            margin-bottom: 0.75rem;
+        }
+
+        .section-header p {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+        }
+
+        /* Guide Cards */
+        .guides-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+            gap: 2rem;
+            margin-bottom: 4rem;
+        }
+
+        .guide-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .guide-card:hover {
+            transform: translateY(-8px);
+            border-color: transparent;
+        }
+
+        .guide-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border-radius: 20px;
+            padding: 1px;
+            background: linear-gradient(135deg, transparent 0%, transparent 100%);
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .guide-card.red:hover::before {
+            background: linear-gradient(135deg, var(--accent-red), #dc2626);
+            opacity: 1;
+        }
+
+        .guide-card.gold:hover::before {
+            background: linear-gradient(135deg, var(--accent-gold), #f59e0b);
+            opacity: 1;
+        }
+
+        .guide-card.cyan:hover::before {
+            background: linear-gradient(135deg, var(--accent-cyan), #06b6d4);
+            opacity: 1;
+        }
+
+        .guide-card-header {
+            padding: 2rem 2rem 0;
+        }
+
+        .guide-icon {
+            width: 64px;
+            height: 64px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.75rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .guide-card.red .guide-icon {
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .guide-card.gold .guide-icon {
+            background: rgba(251, 191, 36, 0.15);
+            border: 1px solid rgba(251, 191, 36, 0.3);
+        }
+
+        .guide-card.cyan .guide-icon {
+            background: rgba(0, 212, 255, 0.15);
+            border: 1px solid rgba(0, 212, 255, 0.3);
+        }
+
+        .severity-tag {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 1rem;
+        }
+
+        .severity-critical {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--accent-red);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .severity-high {
+            background: rgba(251, 191, 36, 0.2);
+            color: var(--accent-gold);
+            border: 1px solid rgba(251, 191, 36, 0.3);
+        }
+
+        .guide-card h3 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+
+        .guide-card-body {
+            padding: 0 2rem;
+            flex: 1;
+        }
+
+        .guide-card-body p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .guide-topics {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .topic-tag {
+            padding: 0.35rem 0.75rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .guide-card-footer {
+            padding: 1.5rem 2rem 2rem;
+            margin-top: auto;
+        }
+
+        .guide-link {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            padding: 1rem 1.5rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            color: var(--text-primary);
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .guide-card.red .guide-link:hover {
+            background: rgba(239, 68, 68, 0.15);
+            border-color: var(--accent-red);
+            color: var(--accent-red);
+        }
+
+        .guide-card.gold .guide-link:hover {
+            background: rgba(251, 191, 36, 0.15);
+            border-color: var(--accent-gold);
+            color: var(--accent-gold);
+        }
+
+        .guide-card.cyan .guide-link:hover {
+            background: rgba(0, 212, 255, 0.15);
+            border-color: var(--accent-cyan);
+            color: var(--accent-cyan);
+        }
+
+        .guide-link svg {
+            width: 20px;
+            height: 20px;
+            transition: transform 0.2s;
+        }
+
+        .guide-link:hover svg {
+            transform: translateX(4px);
+        }
+
+        /* Attack Chain Section */
+        .attack-chain-section {
+            margin: 4rem 0;
+            padding: 3rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+        }
+
+        .attack-chain-section h3 {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.25rem;
+            text-align: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .attack-chain-section > p {
+            text-align: center;
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+        }
+
+        .attack-chain {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .attack-node {
+            padding: 1rem 1.5rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            text-align: center;
+            min-width: 140px;
+        }
+
+        .attack-node-icon {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .attack-node-title {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .attack-node-sub {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .attack-arrow {
+            color: var(--accent-purple);
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        .attack-node.compromise {
+            border-color: rgba(239, 68, 68, 0.4);
+            background: rgba(239, 68, 68, 0.1);
+        }
+
+        .attack-node.compromise .attack-node-title {
+            color: var(--accent-red);
+        }
+
+        /* Features Grid */
+        .features-section {
+            margin: 4rem 0;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .feature-card {
+            padding: 1.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            transition: border-color 0.2s;
+        }
+
+        .feature-card:hover {
+            border-color: var(--accent-purple);
+        }
+
+        .feature-icon {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .feature-card h4 {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+        }
+
+        .feature-card p {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 4rem 2rem;
+            border-top: 1px solid var(--border-color);
+            margin-top: 4rem;
+        }
+
+        .footer-logo {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 1rem;
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+        }
+
+        footer p {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+
+        footer a {
+            color: var(--accent-purple);
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-top: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .footer-links a {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header-content {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .hero {
+                padding: 4rem 1.5rem 2rem;
+            }
+
+            .hero h1 {
+                font-size: 2rem;
+            }
+
+            .stats-row {
+                gap: 2rem;
+            }
+
+            .stat-value {
+                font-size: 2rem;
+            }
+
+            .guides-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .attack-chain {
+                flex-direction: column;
+            }
+
+            .attack-arrow {
+                transform: rotate(90deg);
+            }
+
+            .attack-chain-section {
+                padding: 2rem 1.5rem;
+            }
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .guide-card {
+            animation: fadeInUp 0.5s ease-out forwards;
+        }
+
+        .guide-card:nth-child(1) { animation-delay: 0.1s; }
+        .guide-card:nth-child(2) { animation-delay: 0.2s; }
+        .guide-card:nth-child(3) { animation-delay: 0.3s; }
+    </style>
+</head>
+<body>
+    <div class="bg-gradient"></div>
+    <div class="bg-grid"></div>
+
+    <header>
+        <div class="header-content">
+            <a href="#" class="logo">
+                <div class="logo-icon">🛡️</div>
+                AD Hardening
+            </a>
+            <a href="https://github.com" class="github-link" target="_blank">
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+                </svg>
+                View on GitHub
+            </a>
+        </div>
+    </header>
+
+    <section class="hero">
+        <div class="hero-badge">
+            <span>●</span> Security Documentation
+        </div>
+        <h1>Active Directory<br>Hardening Guides</h1>
+        <p>Comprehensive, actionable security guides to protect your Active Directory environment from the most common and devastating attack techniques.</p>
+        
+        <div class="stats-row">
+            <div class="stat">
+                <div class="stat-value">3</div>
+                <div class="stat-label">Attack Guides</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value">50+</div>
+                <div class="stat-label">PowerShell Scripts</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value">100%</div>
+                <div class="stat-label">Free & Open</div>
+            </div>
+        </div>
+    </section>
+
+    <main class="container">
+        <div class="section-header">
+            <h2>Hardening Guides</h2>
+            <p>Select a guide to learn about the attack and how to defend against it</p>
+        </div>
+
+        <div class="guides-grid">
+            <!-- DCSync Guide -->
+            <article class="guide-card red">
+                <div class="guide-card-header">
+                    <div class="guide-icon">💀</div>
+                    <span class="severity-tag severity-critical">Critical Severity</span>
+                    <h3>DCSync Attack</h3>
+                </div>
+                <div class="guide-card-body">
+                    <p>Protect against directory replication abuse that allows attackers to extract all password hashes and create Golden Tickets for unlimited domain access.</p>
+                    <div class="guide-topics">
+                        <span class="topic-tag">Replication Rights</span>
+                        <span class="topic-tag">KRBTGT Protection</span>
+                        <span class="topic-tag">Admin Tiering</span>
+                        <span class="topic-tag">Detection</span>
+                    </div>
+                </div>
+                <div class="guide-card-footer">
+                    <a href="DCSync.html" class="guide-link">
+                        View Guide
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M5 12h14M12 5l7 7-7 7"/>
+                        </svg>
+                    </a>
+                </div>
+            </article>
+
+            <!-- Kerberoasting Guide -->
+            <article class="guide-card gold">
+                <div class="guide-card-header">
+                    <div class="guide-icon">🎫</div>
+                    <span class="severity-tag severity-high">High Severity</span>
+                    <h3>Kerberoasting</h3>
+                </div>
+                <div class="guide-card-body">
+                    <p>Defend service accounts from offline password cracking attacks that any authenticated user can perform to compromise privileged services.</p>
+                    <div class="guide-topics">
+                        <span class="topic-tag">Strong Passwords</span>
+                        <span class="topic-tag">gMSA Migration</span>
+                        <span class="topic-tag">AES Encryption</span>
+                        <span class="topic-tag">Honeypots</span>
+                    </div>
+                </div>
+                <div class="guide-card-footer">
+                    <a href="kerberoasting.html" class="guide-link">
+                        View Guide
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M5 12h14M12 5l7 7-7 7"/>
+                        </svg>
+                    </a>
+                </div>
+            </article>
+
+            <!-- Relay Attacks Guide -->
+            <article class="guide-card cyan">
+                <div class="guide-card-header">
+                    <div class="guide-icon">🔄</div>
+                    <span class="severity-tag severity-critical">Critical Severity</span>
+                    <h3>NTLM Relay Attacks</h3>
+                </div>
+                <div class="guide-card-body">
+                    <p>Harden against authentication relay attacks including PetitPotam, PrinterBug, and Shadow Credentials that can lead to full domain compromise.</p>
+                    <div class="guide-topics">
+                        <span class="topic-tag">LDAP Signing</span>
+                        <span class="topic-tag">Channel Binding</span>
+                        <span class="topic-tag">Coercion Mitigations</span>
+                        <span class="topic-tag">NTLM Restrictions</span>
+                    </div>
+                </div>
+                <div class="guide-card-footer">
+                    <a href="relay_hardening.html" class="guide-link">
+                        View Guide
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M5 12h14M12 5l7 7-7 7"/>
+                        </svg>
+                    </a>
+                </div>
+            </article>
+        </div>
+
+        <!-- Attack Chain Visualization -->
+        <section class="attack-chain-section">
+            <h3>Common Attack Chain</h3>
+            <p>How these attacks combine to achieve full domain compromise</p>
+            
+            <div class="attack-chain">
+                <div class="attack-node">
+                    <div class="attack-node-icon">🎣</div>
+                    <div class="attack-node-title">Initial Access</div>
+                    <div class="attack-node-sub">Phishing / Exploit</div>
+                </div>
+                <div class="attack-arrow">→</div>
+                <div class="attack-node">
+                    <div class="attack-node-icon">🔄</div>
+                    <div class="attack-node-title">NTLM Relay</div>
+                    <div class="attack-node-sub">Coercion + Relay</div>
+                </div>
+                <div class="attack-arrow">→</div>
+                <div class="attack-node">
+                    <div class="attack-node-icon">🎫</div>
+                    <div class="attack-node-title">Kerberoast</div>
+                    <div class="attack-node-sub">Crack Service Accts</div>
+                </div>
+                <div class="attack-arrow">→</div>
+                <div class="attack-node">
+                    <div class="attack-node-icon">⬆️</div>
+                    <div class="attack-node-title">Privilege Escalation</div>
+                    <div class="attack-node-sub">Admin Access</div>
+                </div>
+                <div class="attack-arrow">→</div>
+                <div class="attack-node compromise">
+                    <div class="attack-node-icon">💀</div>
+                    <div class="attack-node-title">DCSync</div>
+                    <div class="attack-node-sub">Domain Compromise</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Features Section -->
+        <section class="features-section">
+            <div class="section-header">
+                <h2>What's Included</h2>
+                <p>Everything you need to harden your AD environment</p>
+            </div>
+
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">📋</div>
+                    <h4>Step-by-Step Instructions</h4>
+                    <p>Clear, actionable steps to implement each hardening measure with explanations of what and why.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">💻</div>
+                    <h4>PowerShell Scripts</h4>
+                    <p>Ready-to-use scripts for auditing, remediation, and ongoing monitoring of your environment.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔍</div>
+                    <h4>Detection Rules</h4>
+                    <p>SIEM queries and Sigma rules to detect active attacks and suspicious activity.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">✅</div>
+                    <h4>Interactive Checklists</h4>
+                    <p>Track your implementation progress with persistent checklists that save your progress.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🎯</div>
+                    <h4>Attack Explanations</h4>
+                    <p>Understand how each attack works so you can better defend against variations.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🚨</div>
+                    <h4>Incident Response</h4>
+                    <p>Emergency procedures for when attacks are detected, including recovery steps.</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="footer-logo">🛡️ AD Hardening Guides</div>
+        <p>Open source security documentation for Active Directory environments</p>
+        <p>Built with ❤️ for the security community</p>
+        <div class="footer-links">
+            <a href="https://attack.mitre.org/matrices/enterprise/windows/" target="_blank">MITRE ATT&CK</a>
+            <a href="https://docs.microsoft.com/en-us/windows-server/identity/ad-ds/plan/security-best-practices/best-practices-for-securing-active-directory" target="_blank">Microsoft AD Security</a>
+            <a href="https://adsecurity.org/" target="_blank">ADSecurity.org</a>
+        </div>
+    </footer>
+</body>
+</html>
